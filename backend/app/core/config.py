@@ -18,20 +18,24 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
-    # Database
+    # Database - supports both direct URL and individual components
+    DATABASE_URL: Optional[str] = None
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "uns_user"
     POSTGRES_PASSWORD: str = "uns_password"
     POSTGRES_DB: str = "uns_kobetsu"
 
-    @property
-    def DATABASE_URL(self) -> str:
+    def get_database_url(self) -> str:
+        """Get database URL, preferring direct URL if set."""
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
-    @property
-    def DATABASE_URL_ASYNC(self) -> str:
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+    def get_database_url_async(self) -> str:
+        """Get async database URL."""
+        base_url = self.get_database_url()
+        return base_url.replace("postgresql://", "postgresql+asyncpg://")
 
     # Redis
     REDIS_HOST: str = "localhost"

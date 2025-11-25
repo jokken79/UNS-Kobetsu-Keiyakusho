@@ -4,14 +4,14 @@ Provides SQLAlchemy engine, session factory, and dependency injection.
 """
 from typing import Generator
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker, declarative_base
 
 from .config import settings
 
 # Create SQLAlchemy engine
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.get_database_url(),
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
@@ -71,7 +71,7 @@ def check_db_connection() -> bool:
     """Check if database connection is healthy."""
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         return True
     except Exception:
