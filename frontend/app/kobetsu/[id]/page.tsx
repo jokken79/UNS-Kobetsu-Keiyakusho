@@ -18,6 +18,13 @@ export default function KobetsuDetailPage() {
     enabled: !!id,
   })
 
+  // 従業員詳細（単価情報含む）
+  const { data: employeeDetails } = useQuery({
+    queryKey: ['kobetsu-employees', id],
+    queryFn: () => kobetsuApi.getEmployeeDetails(id),
+    enabled: !!id,
+  })
+
   const activateMutation = useMutation({
     mutationFn: () => kobetsuApi.activate(id),
     onSuccess: () => {
@@ -268,6 +275,131 @@ export default function KobetsuDetailPage() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Employees Section */}
+      <div className="card">
+        <div className="card-header flex justify-between items-center">
+          <h2 className="text-lg font-semibold">
+            派遣労働者一覧
+            {employeeDetails?.total_employees && (
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({employeeDetails.total_employees}名)
+              </span>
+            )}
+          </h2>
+          <Link
+            href={`/assign?factory_id=${contract.factory_id}`}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            + 従業員を追加
+          </Link>
+        </div>
+        <div className="card-body p-0">
+          {employeeDetails?.employees?.length ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      社員番号
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      氏名
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      国籍
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      時給単価
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      単価ソース
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      雇用形態
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      期間
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {employeeDetails.employees.map((emp: any) => (
+                    <tr key={emp.employee_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {emp.employee_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{emp.full_name_kanji}</div>
+                          <div className="text-sm text-gray-500">{emp.full_name_kana}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {emp.nationality}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className="font-medium text-gray-900">
+                          ¥{emp.effective_rate?.toLocaleString() || '-'}
+                        </span>
+                        {emp.individual_rate && (
+                          <span className="ml-1 text-xs text-blue-600">(個別)</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                          emp.rate_source === 'individual'
+                            ? 'bg-blue-100 text-blue-800'
+                            : emp.rate_source === 'employee'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {emp.rate_source === 'individual' ? '個別' :
+                           emp.rate_source === 'employee' ? '従業員' : '契約'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                          emp.is_indefinite_employment
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {emp.employment_type_display}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {emp.individual_start_date || emp.individual_end_date ? (
+                          <span>
+                            {emp.individual_start_date && (
+                              <span>{new Date(emp.individual_start_date).toLocaleDateString('ja-JP')}</span>
+                            )}
+                            {' ~ '}
+                            {emp.individual_end_date && (
+                              <span>{new Date(emp.individual_end_date).toLocaleDateString('ja-JP')}</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">契約期間通り</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              <p>従業員が登録されていません</p>
+              <Link
+                href={`/assign?factory_id=${contract.factory_id}`}
+                className="mt-2 inline-block text-blue-600 hover:text-blue-700"
+              >
+                従業員を追加する
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

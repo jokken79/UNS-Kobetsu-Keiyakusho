@@ -15,7 +15,12 @@ const navigation = [
     icon: '📝',
   },
   {
-    name: '新規作成',
+    name: '従業員配属',
+    href: '/assign',
+    icon: '👤',
+  },
+  {
+    name: '新規契約作成',
     href: '/kobetsu/create',
     icon: '➕',
   },

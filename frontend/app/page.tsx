@@ -22,6 +22,18 @@ export default function HomePage() {
     queryFn: () => kobetsuApi.getExpiring(30),
   })
 
+  // 抵触日アラート
+  const { data: conflictAlerts } = useQuery({
+    queryKey: ['conflict-alerts'],
+    queryFn: () => kobetsuApi.getConflictDateAlerts(90),
+  })
+
+  // 契約期限アラート（詳細）
+  const { data: expiringAlerts } = useQuery({
+    queryKey: ['expiring-alerts'],
+    queryFn: () => kobetsuApi.getExpiringContractsAlerts(30),
+  })
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -41,6 +53,65 @@ export default function HomePage() {
 
       {/* Statistics Cards */}
       <KobetsuStats stats={stats} isLoading={statsLoading} />
+
+      {/* Alert Banners */}
+      {(conflictAlerts?.length > 0 || expiringAlerts?.length > 0) && (
+        <div className="space-y-3">
+          {/* 抵触日警告 */}
+          {conflictAlerts?.filter((a: any) => a.days_remaining <= 30).map((alert: any) => (
+            <div
+              key={alert.factory_id}
+              className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md"
+            >
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">⚠️</span>
+                <div className="flex-1">
+                  <h4 className="text-red-800 font-semibold">
+                    抵触日警告: {alert.company_name} {alert.plant_name}
+                  </h4>
+                  <p className="text-red-700 text-sm">
+                    抵触日まで残り <strong>{alert.days_remaining}日</strong>
+                    （{alert.conflict_date}）- {alert.total_employees}名が影響を受けます
+                  </p>
+                </div>
+                <Link
+                  href={`/kobetsu?factory_id=${alert.factory_id}`}
+                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                >
+                  確認
+                </Link>
+              </div>
+            </div>
+          ))}
+
+          {/* 期限7日以内の契約 */}
+          {expiringAlerts?.filter((a: any) => a.days_remaining <= 7).map((alert: any) => (
+            <div
+              key={alert.id}
+              className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-md"
+            >
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">📅</span>
+                <div className="flex-1">
+                  <h4 className="text-orange-800 font-semibold">
+                    契約期限間近: {alert.contract_number}
+                  </h4>
+                  <p className="text-orange-700 text-sm">
+                    {alert.worksite_name} - 残り <strong>{alert.days_remaining}日</strong>
+                    （{alert.dispatch_end_date}）- {alert.employee_count}名
+                  </p>
+                </div>
+                <Link
+                  href={`/kobetsu/${alert.id}`}
+                  className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                >
+                  詳細
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -130,13 +201,20 @@ export default function HomePage() {
           </h2>
         </div>
         <div className="card-body">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Link
+              href="/assign"
+              className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors border-2 border-blue-200"
+            >
+              <span className="text-3xl mb-2">👤</span>
+              <span className="text-sm font-medium text-blue-700">従業員配属</span>
+            </Link>
             <Link
               href="/kobetsu/create"
               className="flex flex-col items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <span className="text-3xl mb-2">📝</span>
-              <span className="text-sm font-medium text-gray-700">新規作成</span>
+              <span className="text-sm font-medium text-gray-700">新規契約作成</span>
             </Link>
             <Link
               href="/kobetsu?status=draft"
@@ -153,11 +231,11 @@ export default function HomePage() {
               <span className="text-sm font-medium text-gray-700">有効な契約</span>
             </Link>
             <Link
-              href="/kobetsu/export"
+              href="/kobetsu?status=expired"
               className="flex flex-col items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <span className="text-3xl mb-2">📊</span>
-              <span className="text-sm font-medium text-gray-700">CSVエクスポート</span>
+              <span className="text-sm font-medium text-gray-700">期限切れ</span>
             </Link>
           </div>
         </div>
