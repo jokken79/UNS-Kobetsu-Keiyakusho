@@ -1,0 +1,251 @@
+/**
+ * API Client for UNS Kobetsu Keiyakusho
+ * Axios-based client with JWT authentication
+ */
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios'
+import type {
+  KobetsuCreate,
+  KobetsuUpdate,
+  KobetsuResponse,
+  KobetsuListItem,
+  KobetsuStats,
+  KobetsuListParams,
+  PaginatedResponse,
+  LoginRequest,
+  TokenResponse,
+  User,
+} from '@/types'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+
+// Token storage keys
+const ACCESS_TOKEN_KEY = 'access_token'
+const REFRESH_TOKEN_KEY = 'refresh_token'
+
+// Create axios instance
+const apiClient: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Request interceptor - add auth token
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// Response interceptor - handle token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    // If 401 and not already retrying
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+
+      try {
+        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+        if (refreshToken) {
+          const response = await axios.post<TokenResponse>(`${API_URL}/auth/refresh`, {
+            refresh_token: refreshToken,
+          })
+
+          const { access_token, refresh_token } = response.data
+          localStorage.setItem(ACCESS_TOKEN_KEY, access_token)
+          localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token)
+
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${access_token}`
+          }
+
+          return apiClient(originalRequest)
+        }
+      } catch (refreshError) {
+        // Refresh failed - clear tokens and redirect to login
+        localStorage.removeItem(ACCESS_TOKEN_KEY)
+        localStorage.removeItem(REFRESH_TOKEN_KEY)
+        window.location.href = '/login'
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
+
+// Auth API
+export const authApi = {
+  login: async (data: LoginRequest): Promise<TokenResponse> => {
+    const response = await apiClient.post<TokenResponse>('/auth/login', data)
+    const { access_token, refresh_token } = response.data
+    localStorage.setItem(ACCESS_TOKEN_KEY, access_token)
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token)
+    return response.data
+  },
+
+  logout: async (): Promise<void> => {
+    try {
+      await apiClient.post('/auth/logout')
+    } finally {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      localStorage.removeItem(REFRESH_TOKEN_KEY)
+    }
+  },
+
+  getCurrentUser: async (): Promise<User> => {
+    const response = await apiClient.get<User>('/auth/me')
+    return response.data
+  },
+
+  isAuthenticated: (): boolean => {
+    return !!localStorage.getItem(ACCESS_TOKEN_KEY)
+  },
+}
+
+// Kobetsu Keiyakusho API
+export const kobetsuApi = {
+  // List contracts with pagination and filters
+  getList: async (params?: KobetsuListParams): Promise<PaginatedResponse<KobetsuListItem>> => {
+    const response = await apiClient.get<PaginatedResponse<KobetsuListItem>>('/kobetsu', {
+      params,
+    })
+    return response.data
+  },
+
+  // Get single contract by ID
+  getById: async (id: number): Promise<KobetsuResponse> => {
+    const response = await apiClient.get<KobetsuResponse>(`/kobetsu/${id}`)
+    return response.data
+  },
+
+  // Get contract by contract number
+  getByNumber: async (contractNumber: string): Promise<KobetsuResponse> => {
+    const response = await apiClient.get<KobetsuResponse>(`/kobetsu/by-number/${contractNumber}`)
+    return response.data
+  },
+
+  // Create new contract
+  create: async (data: KobetsuCreate): Promise<KobetsuResponse> => {
+    const response = await apiClient.post<KobetsuResponse>('/kobetsu', data)
+    return response.data
+  },
+
+  // Update contract
+  update: async (id: number, data: KobetsuUpdate): Promise<KobetsuResponse> => {
+    const response = await apiClient.put<KobetsuResponse>(`/kobetsu/${id}`, data)
+    return response.data
+  },
+
+  // Delete contract
+  delete: async (id: number, hard = false): Promise<void> => {
+    await apiClient.delete(`/kobetsu/${id}`, { params: { hard } })
+  },
+
+  // Get statistics
+  getStats: async (factoryId?: number): Promise<KobetsuStats> => {
+    const response = await apiClient.get<KobetsuStats>('/kobetsu/stats', {
+      params: { factory_id: factoryId },
+    })
+    return response.data
+  },
+
+  // Get expiring contracts
+  getExpiring: async (days = 30): Promise<KobetsuListItem[]> => {
+    const response = await apiClient.get<KobetsuListItem[]>('/kobetsu/expiring', {
+      params: { days },
+    })
+    return response.data
+  },
+
+  // Get contracts by factory
+  getByFactory: async (factoryId: number): Promise<KobetsuListItem[]> => {
+    const response = await apiClient.get<KobetsuListItem[]>(`/kobetsu/by-factory/${factoryId}`)
+    return response.data
+  },
+
+  // Get contracts by employee
+  getByEmployee: async (employeeId: number): Promise<KobetsuListItem[]> => {
+    const response = await apiClient.get<KobetsuListItem[]>(`/kobetsu/by-employee/${employeeId}`)
+    return response.data
+  },
+
+  // Activate draft contract
+  activate: async (id: number): Promise<KobetsuResponse> => {
+    const response = await apiClient.post<KobetsuResponse>(`/kobetsu/${id}/activate`)
+    return response.data
+  },
+
+  // Renew contract
+  renew: async (id: number, newEndDate: string): Promise<KobetsuResponse> => {
+    const response = await apiClient.post<KobetsuResponse>(`/kobetsu/${id}/renew`, null, {
+      params: { new_end_date: newEndDate },
+    })
+    return response.data
+  },
+
+  // Duplicate contract
+  duplicate: async (id: number): Promise<KobetsuResponse> => {
+    const response = await apiClient.post<KobetsuResponse>(`/kobetsu/${id}/duplicate`)
+    return response.data
+  },
+
+  // Get employees for contract
+  getEmployees: async (id: number): Promise<number[]> => {
+    const response = await apiClient.get<number[]>(`/kobetsu/${id}/employees`)
+    return response.data
+  },
+
+  // Add employee to contract
+  addEmployee: async (id: number, employeeId: number): Promise<void> => {
+    await apiClient.post(`/kobetsu/${id}/employees/${employeeId}`)
+  },
+
+  // Remove employee from contract
+  removeEmployee: async (id: number, employeeId: number): Promise<void> => {
+    await apiClient.delete(`/kobetsu/${id}/employees/${employeeId}`)
+  },
+
+  // Generate PDF/DOCX
+  generatePDF: async (id: number, format: 'pdf' | 'docx' = 'pdf'): Promise<Blob> => {
+    const response = await apiClient.post(`/kobetsu/${id}/generate-pdf`, null, {
+      params: { format },
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  // Sign contract
+  sign: async (id: number, pdfPath: string): Promise<{ message: string; signed_date: string; pdf_path: string }> => {
+    const response = await apiClient.post(`/kobetsu/${id}/sign`, null, {
+      params: { pdf_path: pdfPath },
+    })
+    return response.data
+  },
+
+  // Download signed PDF
+  download: async (id: number): Promise<Blob> => {
+    const response = await apiClient.get(`/kobetsu/${id}/download`, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  // Export to CSV
+  exportCSV: async (status?: string, factoryId?: number): Promise<Blob> => {
+    const response = await apiClient.get('/kobetsu/export/csv', {
+      params: { status, factory_id: factoryId },
+      responseType: 'blob',
+    })
+    return response.data
+  },
+}
+
+export default apiClient

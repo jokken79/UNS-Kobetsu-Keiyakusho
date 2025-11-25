@@ -14,6 +14,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# But keep frontend/lib (API client)
+!frontend/lib/
 parts/
 sdist/
 var/
