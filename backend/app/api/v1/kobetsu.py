@@ -387,26 +387,141 @@ async def get_contract_employees(
     return service.get_employees(contract_id)
 
 
-@router.post("/{contract_id}/employees/{employee_id}", status_code=status.HTTP_201_CREATED)
-async def add_employee_to_contract(
+@router.get("/{contract_id}/employees/details")
+async def get_contract_employees_with_rates(
     contract_id: int,
-    employee_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Add an employee to a contract.
-    """
-    service = KobetsuService(db)
-    success = service.add_employee(contract_id, employee_id)
+    Get detailed employee list with effective 単価 for a contract.
 
-    if not success:
+    Returns each employee with their effective hourly rate, showing:
+    - Employee basic info (社員№, 氏名, カナ)
+    - Individual rate (個別単価) if set
+    - Effective rate (使用される単価)
+    - Rate source (individual/contract/employee)
+    - Individual dates (途中入社/退社)
+    - Employment type (有期/無期)
+    """
+    from app.models.kobetsu_keiyakusho import KobetsuEmployee
+    from app.models.employee import Employee
+    from app.services.contract_logic_service import ContractLogicService
+
+    service = KobetsuService(db)
+    contract = service.get_by_id(contract_id)
+
+    if not contract:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot add employee: contract not found or employee already assigned"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Contract with ID {contract_id} not found"
         )
 
-    return {"message": f"Employee {employee_id} added to contract {contract_id}"}
+    logic_service = ContractLogicService(db)
+
+    # Get all employees with their individual settings
+    kobetsu_employees = db.query(KobetsuEmployee).filter(
+        KobetsuEmployee.kobetsu_keiyakusho_id == contract_id
+    ).all()
+
+    result = []
+    for ke in kobetsu_employees:
+        emp = ke.employee
+        effective = logic_service.get_effective_rate(ke, contract)
+
+        result.append({
+            "employee_id": emp.id,
+            "employee_number": emp.employee_number,
+            "full_name_kanji": emp.full_name_kanji,
+            "full_name_kana": emp.full_name_kana,
+            "nationality": emp.nationality,
+            # 単価情報
+            "employee_base_rate": float(emp.hourly_rate) if emp.hourly_rate else None,
+            "individual_rate": float(ke.hourly_rate) if ke.hourly_rate else None,
+            "effective_rate": float(effective["hourly_rate"]) if effective["hourly_rate"] else None,
+            "rate_source": effective["source"],
+            # 時間外単価
+            "overtime_rate": float(effective["overtime_rate"]) if effective["overtime_rate"] else None,
+            "night_shift_rate": float(effective["night_shift_rate"]) if effective["night_shift_rate"] else None,
+            "holiday_rate": float(effective["holiday_rate"]) if effective["holiday_rate"] else None,
+            # 期間
+            "individual_start_date": ke.individual_start_date,
+            "individual_end_date": ke.individual_end_date,
+            "contract_start_date": contract.dispatch_start_date,
+            "contract_end_date": contract.dispatch_end_date,
+            # 雇用形態
+            "is_indefinite_employment": ke.is_indefinite_employment,
+            "employment_type_display": "無期雇用" if ke.is_indefinite_employment else "有期雇用",
+            # メタデータ
+            "notes": ke.notes,
+            "created_at": ke.created_at,
+        })
+
+    return {
+        "contract_id": contract_id,
+        "contract_number": contract.contract_number,
+        "worksite_name": contract.worksite_name,
+        "contract_default_rate": float(contract.hourly_rate),
+        "total_employees": len(result),
+        "employees": result
+    }
+
+
+@router.post("/{contract_id}/employees/{employee_id}", status_code=status.HTTP_201_CREATED)
+async def add_employee_to_contract(
+    contract_id: int,
+    employee_id: int,
+    hourly_rate: Optional[float] = Query(None, description="個別単価 (override)"),
+    individual_start_date: Optional[date] = Query(None, description="個別開始日 (途中入社)"),
+    individual_end_date: Optional[date] = Query(None, description="個別終了日 (途中退社)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Add an employee to a contract with optional individual rate.
+
+    Parameters:
+    - hourly_rate: 個別単価 - Override rate for this employee in this contract
+    - individual_start_date: 途中入社 - If employee starts after contract start
+    - individual_end_date: 途中退社 - If employee ends before contract end
+
+    If hourly_rate is not provided, uses the employee's base rate.
+    """
+    from decimal import Decimal
+    from app.services.contract_logic_service import ContractLogicService, ContractValidationError
+
+    logic_service = ContractLogicService(db)
+
+    try:
+        kobetsu_employee = logic_service.add_employee_to_contract(
+            contract_id=contract_id,
+            employee_id=employee_id,
+            hourly_rate=Decimal(str(hourly_rate)) if hourly_rate else None,
+            individual_start_date=individual_start_date,
+            individual_end_date=individual_end_date,
+        )
+        db.commit()
+
+        return {
+            "message": f"Employee {employee_id} added to contract {contract_id}",
+            "employee_id": employee_id,
+            "contract_id": contract_id,
+            "effective_rate": float(kobetsu_employee.hourly_rate) if kobetsu_employee.hourly_rate else None,
+            "individual_start_date": kobetsu_employee.individual_start_date,
+            "individual_end_date": kobetsu_employee.individual_end_date,
+        }
+
+    except ContractValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot add employee: {str(e)}"
+        )
 
 
 @router.delete("/{contract_id}/employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -559,6 +674,396 @@ async def update_expired_contracts(
         "count": count,
     }
 
+
+# ========================================
+# SMART ASSIGNMENT ENDPOINTS
+# ========================================
+
+@router.get("/suggest/assignment")
+async def suggest_employee_assignment(
+    employee_id: int = Query(..., description="Employee ID to assign"),
+    factory_id: int = Query(..., description="Factory ID"),
+    factory_line_id: Optional[int] = Query(None, description="Factory Line ID"),
+    start_date: date = Query(..., description="Employee start date"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Suggest how to assign an employee: add to existing contract or create new.
+
+    This endpoint analyzes:
+    1. If there's an existing active contract for this factory/line
+    2. If employee's rate is compatible with existing contract
+    3. If dates align properly
+
+    Returns recommendation:
+    - "add_to_existing": Employee can join an existing contract
+    - "create_new": A new contract should be created
+
+    Example response:
+    {
+        "recommendation": "add_to_existing",
+        "reason": "既存の契約に追加できます。",
+        "existing_contract": {
+            "id": 123,
+            "contract_number": "KOB-202411-0001",
+            "dispatch_end_date": "2025-03-31"
+        },
+        "employee_rate": 1200,
+        "contract_rate": 1200,
+        "rate_difference_pct": 0
+    }
+    """
+    from app.services.contract_logic_service import ContractLogicService
+    from app.models.employee import Employee
+
+    logic_service = ContractLogicService(db)
+
+    # Get employee
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Employee not found"
+        )
+
+    # Find existing contract
+    existing_contract = logic_service.find_existing_contract(
+        factory_id=factory_id,
+        factory_line_id=factory_line_id,
+        target_date=start_date
+    )
+
+    # Determine recommendation
+    should_create, reason = logic_service.should_create_new_contract(
+        employee=employee,
+        factory_id=factory_id,
+        factory_line_id=factory_line_id,
+        start_date=start_date,
+        existing_contract=existing_contract
+    )
+
+    result = {
+        "recommendation": "create_new" if should_create else "add_to_existing",
+        "reason": reason,
+        "employee_id": employee_id,
+        "employee_name": employee.full_name_kanji,
+        "employee_rate": float(employee.hourly_rate) if employee.hourly_rate else None,
+    }
+
+    if existing_contract:
+        rate_diff = 0
+        if employee.hourly_rate and existing_contract.hourly_rate:
+            rate_diff = abs(float(employee.hourly_rate) - float(existing_contract.hourly_rate))
+            rate_diff_pct = (rate_diff / float(existing_contract.hourly_rate)) * 100
+        else:
+            rate_diff_pct = 0
+
+        result["existing_contract"] = {
+            "id": existing_contract.id,
+            "contract_number": existing_contract.contract_number,
+            "worksite_name": existing_contract.worksite_name,
+            "dispatch_start_date": existing_contract.dispatch_start_date,
+            "dispatch_end_date": existing_contract.dispatch_end_date,
+            "current_workers": existing_contract.number_of_workers,
+            "hourly_rate": float(existing_contract.hourly_rate),
+        }
+        result["rate_difference_pct"] = round(rate_diff_pct, 2)
+    else:
+        result["existing_contract"] = None
+        result["rate_difference_pct"] = None
+
+    # Add conflict date info
+    conflict_info = logic_service.get_conflict_date_info(factory_id)
+    result["conflict_date_info"] = conflict_info
+
+    return result
+
+
+@router.post("/assign-employee")
+async def smart_assign_employee(
+    employee_id: int = Query(..., description="Employee ID"),
+    factory_id: int = Query(..., description="Factory ID"),
+    factory_line_id: Optional[int] = Query(None, description="Factory Line ID"),
+    start_date: date = Query(..., description="Start date"),
+    action: str = Query(..., description="Action: 'add_to_existing' or 'create_new'"),
+    existing_contract_id: Optional[int] = Query(None, description="Contract ID (if adding to existing)"),
+    hourly_rate: Optional[float] = Query(None, description="Individual rate override"),
+    duration_months: int = Query(3, description="Contract duration (if creating new)"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Execute employee assignment based on chosen action.
+
+    Actions:
+    - "add_to_existing": Add employee to existing contract
+    - "create_new": Create new contract and add employee
+
+    For "add_to_existing":
+    - existing_contract_id is required
+    - Employee is added to the specified contract
+
+    For "create_new":
+    - A new contract is created with suggested dates
+    - Employee is added as the first worker
+    """
+    from decimal import Decimal
+    from app.services.contract_logic_service import ContractLogicService, ContractValidationError
+    from app.models.employee import Employee
+    from app.models.factory import Factory, FactoryLine
+
+    logic_service = ContractLogicService(db)
+    service = KobetsuService(db)
+
+    # Get employee
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Get factory
+    factory = db.query(Factory).filter(Factory.id == factory_id).first()
+    if not factory:
+        raise HTTPException(status_code=404, detail="Factory not found")
+
+    if action == "add_to_existing":
+        if not existing_contract_id:
+            raise HTTPException(
+                status_code=400,
+                detail="existing_contract_id is required for 'add_to_existing' action"
+            )
+
+        try:
+            kobetsu_employee = logic_service.add_employee_to_contract(
+                contract_id=existing_contract_id,
+                employee_id=employee_id,
+                hourly_rate=Decimal(str(hourly_rate)) if hourly_rate else None,
+                individual_start_date=start_date,
+            )
+            db.commit()
+
+            return {
+                "action": "added_to_existing",
+                "contract_id": existing_contract_id,
+                "employee_id": employee_id,
+                "effective_rate": float(kobetsu_employee.hourly_rate) if kobetsu_employee.hourly_rate else None,
+                "message": f"{employee.full_name_kanji}を既存契約に追加しました"
+            }
+
+        except ContractValidationError as e:
+            raise HTTPException(status_code=400, detail=e.message)
+
+    elif action == "create_new":
+        # Get suggested dates
+        dates = logic_service.suggest_contract_dates(
+            factory_id=factory_id,
+            employee_start_date=start_date,
+            preferred_duration_months=duration_months
+        )
+
+        if "error" in dates:
+            raise HTTPException(status_code=400, detail=dates["error"])
+
+        # Get factory line for job description
+        line = None
+        if factory_line_id:
+            line = db.query(FactoryLine).filter(FactoryLine.id == factory_line_id).first()
+
+        # Create contract data
+        from app.schemas.kobetsu_keiyakusho import KobetsuKeiyakushoCreate
+
+        contract_data = KobetsuKeiyakushoCreate(
+            factory_id=factory_id,
+            employee_ids=[employee_id],
+            contract_date=date.today(),
+            dispatch_start_date=dates["suggested_start"],
+            dispatch_end_date=dates["suggested_end"],
+            work_content=line.job_description if line else "製造業務",
+            responsibility_level=line.responsibility_level if line else "通常業務",
+            worksite_name=factory.plant_name,
+            worksite_address=factory.plant_address or factory.company_address or "",
+            organizational_unit=line.department if line else None,
+            supervisor_department=line.supervisor_department if line else "製造部",
+            supervisor_position="課長",
+            supervisor_name=line.supervisor_name if line else factory.client_responsible_name or "",
+            work_days=["月", "火", "水", "木", "金"],
+            work_start_time="08:00",
+            work_end_time="17:00",
+            break_time_minutes=60,
+            haken_moto_complaint_contact={
+                "department": factory.dispatch_complaint_department or "管理部",
+                "position": "部長",
+                "name": factory.dispatch_complaint_name or "",
+                "phone": factory.dispatch_complaint_phone or ""
+            },
+            haken_saki_complaint_contact={
+                "department": factory.client_complaint_department or "総務部",
+                "position": "部長",
+                "name": factory.client_complaint_name or "",
+                "phone": factory.client_complaint_phone or ""
+            },
+            hourly_rate=float(hourly_rate or employee.hourly_rate or 1200),
+            overtime_rate=float((hourly_rate or employee.hourly_rate or 1200) * Decimal("1.25")),
+            haken_moto_manager={
+                "department": factory.dispatch_responsible_department or "派遣事業部",
+                "position": "部長",
+                "name": factory.dispatch_responsible_name or "",
+                "phone": factory.dispatch_responsible_phone or ""
+            },
+            haken_saki_manager={
+                "department": factory.client_responsible_department or "人事部",
+                "position": "部長",
+                "name": factory.client_responsible_name or "",
+                "phone": factory.client_responsible_phone or ""
+            },
+        )
+
+        try:
+            contract = service.create(contract_data, created_by=current_user.get("id"))
+            db.commit()
+
+            return {
+                "action": "created_new",
+                "contract_id": contract.id,
+                "contract_number": contract.contract_number,
+                "employee_id": employee_id,
+                "dispatch_start_date": contract.dispatch_start_date,
+                "dispatch_end_date": contract.dispatch_end_date,
+                "warnings": dates.get("warnings", []),
+                "message": f"新規契約 {contract.contract_number} を作成し、{employee.full_name_kanji}を追加しました"
+            }
+
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=str(e))
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid action: {action}. Must be 'add_to_existing' or 'create_new'"
+        )
+
+
+# ========================================
+# 抵触日 VALIDATION ENDPOINTS
+# ========================================
+
+@router.get("/validate/conflict-date")
+async def validate_conflict_date(
+    factory_id: int = Query(..., description="Factory ID"),
+    dispatch_end_date: date = Query(..., description="Proposed dispatch end date"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Validate that proposed dispatch_end_date does not exceed factory's 抵触日.
+
+    Returns:
+    - is_valid: Whether the date is valid
+    - message: Validation message (error or warning)
+    - conflict_date: Factory's 抵触日
+    - days_remaining: Days until 抵触日
+    """
+    from app.services.contract_logic_service import ContractLogicService
+
+    logic_service = ContractLogicService(db)
+
+    is_valid, message = logic_service.validate_against_conflict_date(
+        factory_id=factory_id,
+        dispatch_end_date=dispatch_end_date
+    )
+
+    conflict_info = logic_service.get_conflict_date_info(factory_id)
+
+    return {
+        "is_valid": is_valid,
+        "message": message,
+        "conflict_date": conflict_info["conflict_date"],
+        "days_remaining": conflict_info["days_remaining"],
+        "warning_level": conflict_info["warning_level"],
+    }
+
+
+@router.get("/suggest/dates")
+async def suggest_contract_dates(
+    factory_id: int = Query(..., description="Factory ID"),
+    employee_start_date: date = Query(..., description="Employee's start date"),
+    duration_months: int = Query(3, ge=1, le=36, description="Preferred contract duration in months"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Suggest optimal contract dates based on factory's 抵触日 and business rules.
+
+    Returns:
+    - suggested_start: Recommended start date
+    - suggested_end: Recommended end date (adjusted for 抵触日)
+    - max_end: Maximum allowed end date
+    - conflict_date: Factory's 抵触日
+    - warnings: List of warnings or adjustments made
+    """
+    from app.services.contract_logic_service import ContractLogicService
+
+    logic_service = ContractLogicService(db)
+
+    result = logic_service.suggest_contract_dates(
+        factory_id=factory_id,
+        employee_start_date=employee_start_date,
+        preferred_duration_months=duration_months
+    )
+
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result["error"]
+        )
+
+    return result
+
+
+@router.get("/alerts/expiring-contracts")
+async def get_expiring_contracts_alerts(
+    days: int = Query(30, ge=1, le=365, description="Days until expiration"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get contracts expiring within specified days with urgency levels.
+
+    Returns list of contracts sorted by urgency:
+    - critical: 7 days or less
+    - warning: more than 7 days
+    """
+    from app.services.contract_logic_service import ContractLogicService
+
+    logic_service = ContractLogicService(db)
+    return logic_service.get_expiring_contracts(days=days)
+
+
+@router.get("/alerts/conflict-dates")
+async def get_factories_near_conflict_date(
+    days: int = Query(90, ge=1, le=365, description="Days until conflict date"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get factories approaching their 抵触日 within specified days.
+
+    Returns list of factories with urgency levels:
+    - critical: 30 days or less
+    - warning: more than 30 days
+
+    Includes count of active workers at each factory.
+    """
+    from app.services.contract_logic_service import ContractLogicService
+
+    logic_service = ContractLogicService(db)
+    return logic_service.get_factories_near_conflict_date(days=days)
+
+
+# ========================================
+# EXPORT ENDPOINTS
+# ========================================
 
 @router.get("/export/csv")
 async def export_contracts_csv(
