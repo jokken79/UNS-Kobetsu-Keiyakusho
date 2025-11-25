@@ -195,8 +195,9 @@ class FactoryLine(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # Relationship
+    # Relationships
     factory = relationship("Factory", back_populates="lines")
+    employees = relationship("Employee", back_populates="factory_line")
 
     __table_args__ = (
         UniqueConstraint('factory_id', 'line_id', name='uq_factory_line'),

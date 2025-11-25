@@ -62,7 +62,16 @@ def init_db() -> None:
     In production, use Alembic migrations.
     """
     # Import all models to ensure they are registered with Base
-    from app.models import kobetsu_keiyakusho  # noqa: F401
+    # This ensures all relationships and foreign keys are properly resolved
+    from app.models import (  # noqa: F401
+        User,
+        Employee,
+        Factory,
+        FactoryLine,
+        KobetsuKeiyakusho,
+        KobetsuEmployee,
+        DispatchAssignment,
+    )
 
     Base.metadata.create_all(bind=engine)
 

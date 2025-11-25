@@ -184,7 +184,7 @@ class Employee(Base):
     # Relationships
     # ========================================
     factory = relationship("Factory", back_populates="employees")
-    factory_line = relationship("FactoryLine")
+    factory_line = relationship("FactoryLine", back_populates="employees")
     contracts = relationship("KobetsuEmployee", back_populates="employee")
 
     __table_args__ = (
