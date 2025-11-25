@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'add_kobetsu_keiyakusho'
-down_revision = None  # Replace with actual previous revision
+down_revision = '000_create_base_tables'
 branch_labels = None
 depends_on = None
 

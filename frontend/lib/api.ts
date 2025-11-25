@@ -14,6 +14,18 @@ import type {
   LoginRequest,
   TokenResponse,
   User,
+  FactoryResponse,
+  FactoryListItem,
+  CompanyOption,
+  PlantOption,
+  DepartmentOption,
+  LineOption,
+  FactoryCascadeData,
+  EmployeeResponse,
+  EmployeeListItem,
+  EmployeeForContract,
+  EmployeeStats,
+  EmployeeListParams,
 } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
@@ -243,6 +255,104 @@ export const kobetsuApi = {
     const response = await apiClient.get('/kobetsu/export/csv', {
       params: { status, factory_id: factoryId },
       responseType: 'blob',
+    })
+    return response.data
+  },
+}
+
+// Factory API
+export const factoryApi = {
+  // List factories
+  getList: async (params?: {
+    skip?: number
+    limit?: number
+    search?: string
+    company_name?: string
+    is_active?: boolean
+  }): Promise<FactoryListItem[]> => {
+    const response = await apiClient.get<FactoryListItem[]>('/factories', { params })
+    return response.data
+  },
+
+  // Get factory by ID
+  getById: async (id: number): Promise<FactoryResponse> => {
+    const response = await apiClient.get<FactoryResponse>(`/factories/${id}`)
+    return response.data
+  },
+
+  // Cascade dropdowns
+  getCompanies: async (search?: string): Promise<CompanyOption[]> => {
+    const response = await apiClient.get<CompanyOption[]>('/factories/dropdown/companies', {
+      params: { search },
+    })
+    return response.data
+  },
+
+  getPlants: async (companyName: string): Promise<PlantOption[]> => {
+    const response = await apiClient.get<PlantOption[]>('/factories/dropdown/plants', {
+      params: { company_name: companyName },
+    })
+    return response.data
+  },
+
+  getDepartments: async (factoryId: number): Promise<DepartmentOption[]> => {
+    const response = await apiClient.get<DepartmentOption[]>('/factories/dropdown/departments', {
+      params: { factory_id: factoryId },
+    })
+    return response.data
+  },
+
+  getLines: async (factoryId: number, department?: string): Promise<LineOption[]> => {
+    const response = await apiClient.get<LineOption[]>('/factories/dropdown/lines', {
+      params: { factory_id: factoryId, department },
+    })
+    return response.data
+  },
+
+  // Get cascade data for selected line
+  getCascadeData: async (lineId: number): Promise<FactoryCascadeData> => {
+    const response = await apiClient.get<FactoryCascadeData>(`/factories/dropdown/cascade/${lineId}`)
+    return response.data
+  },
+}
+
+// Employee API
+export const employeeApi = {
+  // List employees
+  getList: async (params?: EmployeeListParams): Promise<EmployeeListItem[]> => {
+    const response = await apiClient.get<EmployeeListItem[]>('/employees', { params })
+    return response.data
+  },
+
+  // Get employee by ID
+  getById: async (id: number): Promise<EmployeeResponse> => {
+    const response = await apiClient.get<EmployeeResponse>(`/employees/${id}`)
+    return response.data
+  },
+
+  // Get employees for contract selection
+  getForContract: async (params?: {
+    factory_id?: number
+    search?: string
+    exclude_ids?: string
+    limit?: number
+  }): Promise<EmployeeForContract[]> => {
+    const response = await apiClient.get<EmployeeForContract[]>('/employees/for-contract', {
+      params,
+    })
+    return response.data
+  },
+
+  // Get statistics
+  getStats: async (): Promise<EmployeeStats> => {
+    const response = await apiClient.get<EmployeeStats>('/employees/stats')
+    return response.data
+  },
+
+  // Get employees with expiring visas
+  getExpiringVisas: async (days = 30): Promise<EmployeeListItem[]> => {
+    const response = await apiClient.get<EmployeeListItem[]>('/employees/visa/expiring', {
+      params: { days },
     })
     return response.data
   },
