@@ -258,6 +258,146 @@ export const kobetsuApi = {
     })
     return response.data
   },
+
+  // ========================================
+  // Smart Assignment API - 配属推奨システム
+  // ========================================
+
+  // Get assignment suggestion (add to existing vs create new)
+  suggestAssignment: async (params: {
+    employee_id: number
+    factory_id: number
+    factory_line_id: number
+    start_date: string
+  }): Promise<{
+    recommendation: 'add_to_existing' | 'create_new'
+    reason: string
+    employee_id: number
+    employee_name: string
+    employee_rate: number | null
+    existing_contract: {
+      id: number
+      contract_number: string
+      worksite_name: string
+      dispatch_start_date: string
+      dispatch_end_date: string
+      current_workers: number
+      hourly_rate: number
+    } | null
+    rate_difference_pct: number | null
+    conflict_date_info: {
+      conflict_date: string | null
+      days_remaining: number | null
+      warning_level: string
+      message: string
+    }
+  }> => {
+    const response = await apiClient.get('/kobetsu/suggest/assignment', { params })
+    return response.data
+  },
+
+  // Execute employee assignment
+  assignEmployee: async (params: {
+    employee_id: number
+    factory_id: number
+    factory_line_id: number
+    start_date: string
+    action: 'add_to_existing' | 'create_new'
+    existing_contract_id?: number
+    duration_months?: number
+    hourly_rate?: number
+  }): Promise<{
+    action: string
+    contract_id: number
+    contract_number?: string
+    employee_id: number
+    message: string
+    warnings?: string[]
+  }> => {
+    const response = await apiClient.post('/kobetsu/assign-employee', null, { params })
+    return response.data
+  },
+
+  // Get employee details with effective rates for a contract
+  getEmployeeDetails: async (contractId: number): Promise<{
+    contract_id: number
+    contract_rate: number
+    employees: {
+      employee_id: number
+      employee_name: string
+      effective_rate: number
+      rate_source: string
+      individual_start: string | null
+      individual_end: string | null
+    }[]
+  }> => {
+    const response = await apiClient.get(`/kobetsu/${contractId}/employees/details`)
+    return response.data
+  },
+
+  // Validate dates against conflict date
+  validateConflictDate: async (params: {
+    factory_id: number
+    proposed_end_date: string
+  }): Promise<{
+    valid: boolean
+    conflict_date: string | null
+    proposed_date: string
+    days_before_conflict: number | null
+    message: string
+  }> => {
+    const response = await apiClient.get('/kobetsu/validate/conflict-date', { params })
+    return response.data
+  },
+
+  // Get suggested dates respecting conflict date
+  suggestDates: async (params: {
+    factory_id: number
+    start_date: string
+    duration_months?: number
+  }): Promise<{
+    suggested_start: string
+    suggested_end: string
+    conflict_date: string | null
+    original_end: string
+    was_adjusted: boolean
+    message: string
+  }> => {
+    const response = await apiClient.get('/kobetsu/suggest/dates', { params })
+    return response.data
+  },
+
+  // Get alerts for expiring contracts
+  getExpiringContractsAlerts: async (days?: number): Promise<{
+    id: number
+    contract_number: string
+    worksite_name: string
+    dispatch_end_date: string
+    days_remaining: number
+    status: string
+    employee_count: number
+  }[]> => {
+    const response = await apiClient.get('/kobetsu/alerts/expiring-contracts', {
+      params: { days },
+    })
+    return response.data
+  },
+
+  // Get alerts for factories near conflict date
+  getConflictDateAlerts: async (days?: number): Promise<{
+    factory_id: number
+    company_name: string
+    plant_name: string
+    conflict_date: string
+    days_remaining: number
+    active_contracts: number
+    total_employees: number
+  }[]> => {
+    const response = await apiClient.get('/kobetsu/alerts/conflict-dates', {
+      params: { days },
+    })
+    return response.data
+  },
 }
 
 // Factory API
