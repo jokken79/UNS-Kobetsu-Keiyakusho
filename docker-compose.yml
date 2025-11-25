@@ -1,10 +1,21 @@
 version: '3.8'
 
+# ========================================
+# UNS Kobetsu Keiyakusho - Docker Compose
+# ========================================
+# Puertos únicos para evitar conflictos:
+#   PostgreSQL: 5442
+#   Redis:      6389
+#   Backend:    8010
+#   Frontend:   3010
+#   Adminer:    8090
+# ========================================
+
 services:
   # ========================================
   # PostgreSQL Database
   # ========================================
-  db:
+  kobetsu-db:
     image: postgres:15-alpine
     container_name: kobetsu-db
     restart: unless-stopped
@@ -13,9 +24,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-kobetsu_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${KOBETSU_DB_PORT:-5442}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - kobetsu_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kobetsu_admin}"]
       interval: 10s
@@ -23,18 +34,21 @@ services:
       retries: 5
     networks:
       - kobetsu-network
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=database"
 
   # ========================================
   # Redis Cache
   # ========================================
-  redis:
+  kobetsu-redis:
     image: redis:7-alpine
     container_name: kobetsu-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${KOBETSU_REDIS_PORT:-6389}:6379"
     volumes:
-      - redis_data:/data
+      - kobetsu_redis_data:/data
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -43,73 +57,81 @@ services:
       retries: 5
     networks:
       - kobetsu-network
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=cache"
 
   # ========================================
   # FastAPI Backend
   # ========================================
-  backend:
+  kobetsu-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: kobetsu-keiyakusho-backend:latest
     container_name: kobetsu-backend
     restart: unless-stopped
     environment:
-      # Database
-      DATABASE_URL: postgresql://${POSTGRES_USER:-kobetsu_admin}:${POSTGRES_PASSWORD:-changeme123}@db:5432/${POSTGRES_DB:-kobetsu_db}
-      
-      # Redis
-      REDIS_URL: redis://redis:6379/0
-      
+      # Database (internal Docker network)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kobetsu_admin}:${POSTGRES_PASSWORD:-changeme123}@kobetsu-db:5432/${POSTGRES_DB:-kobetsu_db}
+
+      # Redis (internal Docker network)
+      REDIS_URL: redis://kobetsu-redis:6379/0
+
       # JWT
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      
+
       # CORS
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3010}
+
       # App
       DEBUG: ${DEBUG:-true}
       ENVIRONMENT: ${ENVIRONMENT:-development}
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${KOBETSU_BACKEND_PORT:-8010}:8000"
     volumes:
       - ./backend:/app
-      - ./outputs:/app/outputs
+      - kobetsu_outputs:/app/outputs
     depends_on:
-      db:
+      kobetsu-db:
         condition: service_healthy
-      redis:
+      kobetsu-redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
       - kobetsu-network
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=backend"
 
   # ========================================
   # Next.js Frontend
   # ========================================
-  frontend:
+  kobetsu-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: kobetsu-keiyakusho-frontend:latest
     container_name: kobetsu-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8010}
       NODE_ENV: ${NODE_ENV:-development}
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${KOBETSU_FRONTEND_PORT:-3010}:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
     depends_on:
-      - backend
+      - kobetsu-backend
     command: npm run dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
@@ -118,35 +140,60 @@ services:
       retries: 3
     networks:
       - kobetsu-network
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=frontend"
 
   # ========================================
   # Adminer (Database UI)
   # ========================================
-  adminer:
+  kobetsu-adminer:
     image: adminer:latest
     container_name: kobetsu-adminer
     restart: unless-stopped
     ports:
-      - "${ADMINER_PORT:-8080}:8080"
+      - "${KOBETSU_ADMINER_PORT:-8090}:8080"
     environment:
-      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DEFAULT_SERVER: kobetsu-db
     depends_on:
-      - db
+      - kobetsu-db
     networks:
       - kobetsu-network
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=adminer"
 
 # ========================================
 # Networks
 # ========================================
 networks:
   kobetsu-network:
+    name: kobetsu-keiyakusho-network
     driver: bridge
+    labels:
+      - "app.name=kobetsu-keiyakusho"
 
 # ========================================
-# Volumes
+# Volumes (all prefixed with kobetsu_)
 # ========================================
 volumes:
-  postgres_data:
+  kobetsu_postgres_data:
+    name: kobetsu-keiyakusho-postgres-data
     driver: local
-  redis_data:
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=database"
+
+  kobetsu_redis_data:
+    name: kobetsu-keiyakusho-redis-data
     driver: local
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=cache"
+
+  kobetsu_outputs:
+    name: kobetsu-keiyakusho-outputs
+    driver: local
+    labels:
+      - "app.name=kobetsu-keiyakusho"
+      - "app.component=storage"
