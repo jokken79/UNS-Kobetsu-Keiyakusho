@@ -24,6 +24,11 @@ const navigation = [
     href: '/kobetsu/create',
     icon: '➕',
   },
+  {
+    name: 'データインポート',
+    href: '/import',
+    icon: '📥',
+  },
 ]
 
 export function Sidebar() {

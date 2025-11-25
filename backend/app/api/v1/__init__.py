@@ -8,6 +8,7 @@ from .kobetsu import router as kobetsu_router
 from .auth import router as auth_router
 from .factories import router as factories_router
 from .employees import router as employees_router
+from .imports import router as imports_router
 
 api_router = APIRouter()
 
@@ -34,4 +35,10 @@ api_router.include_router(
     employees_router,
     prefix="/employees",
     tags=["Employees (派遣社員)"]
+)
+
+api_router.include_router(
+    imports_router,
+    prefix="/import",
+    tags=["Data Import (データインポート)"]
 )

@@ -498,4 +498,89 @@ export const employeeApi = {
   },
 }
 
+// ========================================
+// IMPORT API - データインポート
+// ========================================
+
+export interface ImportResponse {
+  success: boolean
+  total_rows: number
+  imported_count: number
+  updated_count: number
+  skipped_count: number
+  errors: { row: number; field: string; message: string; value?: string }[]
+  preview_data: {
+    row: number
+    is_valid: boolean
+    errors: string[]
+    [key: string]: unknown
+  }[]
+  message: string
+}
+
+export const importApi = {
+  // Preview factory import
+  previewFactories: async (file: File): Promise<ImportResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post<ImportResponse>('/import/factories/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  // Execute factory import
+  executeFactoryImport: async (
+    previewData: unknown[],
+    mode: 'create' | 'update' | 'sync' = 'create'
+  ): Promise<ImportResponse> => {
+    const response = await apiClient.post<ImportResponse>('/import/factories/execute', {
+      preview_data: previewData,
+      mode,
+    })
+    return response.data
+  },
+
+  // Preview employee import
+  previewEmployees: async (file: File): Promise<ImportResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post<ImportResponse>('/import/employees/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  // Execute employee import
+  executeEmployeeImport: async (
+    previewData: unknown[],
+    mode: 'create' | 'update' | 'sync' = 'sync'
+  ): Promise<ImportResponse> => {
+    const response = await apiClient.post<ImportResponse>('/import/employees/execute', {
+      preview_data: previewData,
+      mode,
+    })
+    return response.data
+  },
+
+  // One-click sync employees
+  syncEmployees: async (file: File): Promise<ImportResponse> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post<ImportResponse>('/import/employees/sync', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  // Download templates
+  downloadFactoryTemplate: (format: 'excel' | 'json' = 'excel'): string => {
+    return `${API_URL}/import/templates/factories?format=${format}`
+  },
+
+  downloadEmployeeTemplate: (): string => {
+    return `${API_URL}/import/templates/employees`
+  },
+}
+
 export default apiClient
