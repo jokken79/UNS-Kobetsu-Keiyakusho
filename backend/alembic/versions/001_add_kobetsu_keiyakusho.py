@@ -115,18 +115,37 @@ def upgrade():
     )
     
     # Create table for employees assigned to each contract
+    # 重要: 同じラインでも従業員ごとに異なる単価を保存できます
     op.create_table(
         'kobetsu_employees',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('kobetsu_keiyakusho_id', sa.Integer(), nullable=False),
         sa.Column('employee_id', sa.Integer(), nullable=False),
+
+        # 個別単価 (Individual Rates per Employee)
+        sa.Column('hourly_rate', sa.Numeric(10, 2), nullable=True),
+        sa.Column('overtime_rate', sa.Numeric(10, 2), nullable=True),
+        sa.Column('night_shift_rate', sa.Numeric(10, 2), nullable=True),
+        sa.Column('holiday_rate', sa.Numeric(10, 2), nullable=True),
+        sa.Column('billing_rate', sa.Numeric(10, 2), nullable=True),
+
+        # 派遣期間 (Individual Dispatch Period)
+        sa.Column('individual_start_date', sa.Date(), nullable=True),
+        sa.Column('individual_end_date', sa.Date(), nullable=True),
+
+        # 雇用形態
+        sa.Column('is_indefinite_employment', sa.Boolean(), nullable=False, server_default='false'),
+
+        # メタデータ
+        sa.Column('notes', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-        
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['kobetsu_keiyakusho_id'], ['kobetsu_keiyakusho.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['employee_id'], ['employees.id'], ondelete='CASCADE'),
         sa.UniqueConstraint('kobetsu_keiyakusho_id', 'employee_id', name='uq_kobetsu_employee'),
-        
+
         sa.Index('ix_kobetsu_employees_kobetsu_id', 'kobetsu_keiyakusho_id'),
         sa.Index('ix_kobetsu_employees_employee_id', 'employee_id'),
     )

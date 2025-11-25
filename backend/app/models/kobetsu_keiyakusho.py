@@ -184,30 +184,61 @@ class KobetsuEmployee(Base):
     """
     個別契約書に紐づく従業員
     Employees associated with a Kobetsu Keiyakusho
-    
+
+    重要: 同じラインでも、各従業員の単価が異なる場合があります。
+    そのため、契約レベルの単価とは別に、従業員ごとの単価を保存します。
+
     Nota: No se almacenan nombres en el contrato según la ley,
     pero sí se mantiene la relación para gestión interna
     """
     __tablename__ = "kobetsu_employees"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     kobetsu_keiyakusho_id = Column(
-        Integer, 
-        ForeignKey('kobetsu_keiyakusho.id', ondelete='CASCADE'), 
+        Integer,
+        ForeignKey('kobetsu_keiyakusho.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
     employee_id = Column(
-        Integer, 
-        ForeignKey('employees.id', ondelete='CASCADE'), 
+        Integer,
+        ForeignKey('employees.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
+
+    # ========================================
+    # 個別単価 (Individual Rates per Employee)
+    # ========================================
+    # これらは契約レベルの単価をオーバーライドします
+    hourly_rate = Column(Numeric(10, 2), nullable=True)  # 時給単価
+    overtime_rate = Column(Numeric(10, 2), nullable=True)  # 時間外単価
+    night_shift_rate = Column(Numeric(10, 2), nullable=True)  # 深夜単価
+    holiday_rate = Column(Numeric(10, 2), nullable=True)  # 休日単価
+    billing_rate = Column(Numeric(10, 2), nullable=True)  # 請求単価
+
+    # ========================================
+    # 派遣期間 (Individual Dispatch Period)
+    # ========================================
+    # 途中入社や途中退社の場合、契約期間と異なる場合があります
+    individual_start_date = Column(Date, nullable=True)  # 個別開始日
+    individual_end_date = Column(Date, nullable=True)  # 個別終了日
+
+    # ========================================
+    # 雇用形態 (Employment Type - for PDF)
+    # ========================================
+    is_indefinite_employment = Column(Boolean, default=False)  # 無期雇用
+
+    # ========================================
+    # メタデータ
+    # ========================================
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
     # Relationships
     kobetsu_keiyakusho = relationship("KobetsuKeiyakusho", back_populates="employees")
-    employee = relationship("Employee")
+    employee = relationship("Employee", back_populates="contracts")
     
     __table_args__ = (
         UniqueConstraint('kobetsu_keiyakusho_id', 'employee_id', name='uq_kobetsu_employee'),
