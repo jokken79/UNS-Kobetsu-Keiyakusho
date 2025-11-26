@@ -10,6 +10,7 @@ from .factories import router as factories_router
 from .employees import router as employees_router
 from .imports import router as imports_router
 from .documents import router as documents_router
+from .endpoints.sync import router as sync_router
 
 api_router = APIRouter()
 
@@ -48,4 +49,10 @@ api_router.include_router(
     documents_router,
     prefix="/documents",
     tags=["Document Generation (書類生成)"]
+)
+
+api_router.include_router(
+    sync_router,
+    prefix="/sync",
+    tags=["Data Sync (データ同期)"]
 )

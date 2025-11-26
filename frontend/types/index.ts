@@ -200,6 +200,43 @@ export interface KobetsuListParams {
 // FACTORY TYPES
 // ========================================
 
+export interface FactoryLineCreate {
+  line_id?: string
+  department?: string
+  line_name?: string
+  supervisor_department?: string
+  supervisor_name?: string
+  supervisor_phone?: string
+  job_description?: string
+  job_description_detail?: string
+  responsibility_level?: string
+  hourly_rate?: number
+  billing_rate?: number
+  overtime_rate?: number
+  night_rate?: number
+  holiday_rate?: number
+  display_order?: number
+}
+
+export interface FactoryLineUpdate {
+  line_id?: string
+  department?: string
+  line_name?: string
+  supervisor_department?: string
+  supervisor_name?: string
+  supervisor_phone?: string
+  job_description?: string
+  job_description_detail?: string
+  responsibility_level?: string
+  hourly_rate?: number
+  billing_rate?: number
+  overtime_rate?: number
+  night_rate?: number
+  holiday_rate?: number
+  is_active?: boolean
+  display_order?: number
+}
+
 export interface FactoryLineResponse {
   id: number
   factory_id: number
@@ -221,6 +258,108 @@ export interface FactoryLineResponse {
   display_order: number
   created_at: string
   updated_at?: string
+}
+
+export interface FactoryCreate {
+  factory_id?: string
+  company_name: string
+  company_address?: string
+  company_phone?: string
+  company_fax?: string
+  client_responsible_department?: string
+  client_responsible_name?: string
+  client_responsible_phone?: string
+  client_complaint_department?: string
+  client_complaint_name?: string
+  client_complaint_phone?: string
+  plant_name: string
+  plant_address?: string
+  plant_phone?: string
+  dispatch_responsible_department?: string
+  dispatch_responsible_name?: string
+  dispatch_responsible_phone?: string
+  dispatch_complaint_department?: string
+  dispatch_complaint_name?: string
+  dispatch_complaint_phone?: string
+  work_hours_description?: string
+  break_time_description?: string
+  calendar_description?: string
+  day_shift_start?: string
+  day_shift_end?: string
+  night_shift_start?: string
+  night_shift_end?: string
+  break_minutes?: number
+  overtime_description?: string
+  overtime_max_hours_day?: number
+  overtime_max_hours_month?: number
+  overtime_max_hours_year?: number
+  overtime_special_max_month?: number
+  overtime_special_count_year?: number
+  holiday_work_description?: string
+  holiday_work_max_days_month?: number
+  conflict_date?: string
+  time_unit_minutes?: number
+  closing_date?: string
+  payment_date?: string
+  bank_account?: string
+  worker_closing_date?: string
+  worker_payment_date?: string
+  worker_calendar?: string
+  agreement_period?: string
+  agreement_explainer?: string
+  is_active?: boolean
+  notes?: string
+  lines?: FactoryLineCreate[]
+}
+
+export interface FactoryUpdate {
+  company_name?: string
+  company_address?: string
+  company_phone?: string
+  company_fax?: string
+  client_responsible_department?: string
+  client_responsible_name?: string
+  client_responsible_phone?: string
+  client_complaint_department?: string
+  client_complaint_name?: string
+  client_complaint_phone?: string
+  plant_name?: string
+  plant_address?: string
+  plant_phone?: string
+  dispatch_responsible_department?: string
+  dispatch_responsible_name?: string
+  dispatch_responsible_phone?: string
+  dispatch_complaint_department?: string
+  dispatch_complaint_name?: string
+  dispatch_complaint_phone?: string
+  work_hours_description?: string
+  break_time_description?: string
+  calendar_description?: string
+  day_shift_start?: string
+  day_shift_end?: string
+  night_shift_start?: string
+  night_shift_end?: string
+  break_minutes?: number
+  overtime_description?: string
+  overtime_max_hours_day?: number
+  overtime_max_hours_month?: number
+  overtime_max_hours_year?: number
+  overtime_special_max_month?: number
+  overtime_special_count_year?: number
+  holiday_work_description?: string
+  holiday_work_max_days_month?: number
+  conflict_date?: string
+  time_unit_minutes?: number
+  closing_date?: string
+  payment_date?: string
+  bank_account?: string
+  worker_closing_date?: string
+  worker_payment_date?: string
+  worker_calendar?: string
+  agreement_period?: string
+  agreement_explainer?: string
+  is_active?: boolean
+  notes?: string
 }
 
 export interface FactoryResponse {
@@ -318,6 +457,142 @@ export interface FactoryCascadeData {
 // ========================================
 // EMPLOYEE TYPES
 // ========================================
+
+export interface EmployeeCreate {
+  employee_number: string
+  full_name_kanji: string
+  full_name_kana: string
+  full_name_romaji?: string
+  gender?: string
+  date_of_birth?: string
+  age?: number
+  nationality?: string
+  postal_code?: string
+  address?: string
+  phone?: string
+  mobile?: string
+  email?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+  emergency_contact_relationship?: string
+  hire_date: string
+  status?: string
+  contract_type?: string
+  employment_type?: string
+  factory_id?: number
+  factory_line_id?: number
+  company_name?: string
+  plant_name?: string
+  department?: string
+  line_name?: string
+  position?: string
+  hourly_rate?: number
+  billing_rate?: number
+  transportation_allowance?: number
+  visa_type?: string
+  visa_status?: string
+  visa_expiry_date?: string
+  zairyu_card_number?: string
+  zairyu_card_expiry?: string
+  passport_number?: string
+  passport_expiry?: string
+  has_employment_insurance?: boolean
+  employment_insurance_number?: string
+  has_health_insurance?: boolean
+  health_insurance_number?: string
+  has_pension_insurance?: boolean
+  pension_insurance_number?: string
+  has_workers_comp?: boolean
+  yukyu_total?: number
+  yukyu_used?: number
+  yukyu_remaining?: number
+  yukyu_grant_date?: string
+  apartment_id?: number
+  apartment_name?: string
+  apartment_room?: string
+  apartment_rent?: number
+  is_corporate_housing?: boolean
+  housing_subsidy?: number
+  bank_name?: string
+  bank_branch?: string
+  bank_account_type?: string
+  bank_account_number?: string
+  bank_account_holder?: string
+  qualifications?: string
+  drivers_license?: string
+  drivers_license_expiry?: string
+  forklift_license?: boolean
+  notes?: string
+  photo_url?: string
+}
+
+export interface EmployeeUpdate {
+  full_name_kanji?: string
+  full_name_kana?: string
+  full_name_romaji?: string
+  gender?: string
+  date_of_birth?: string
+  age?: number
+  nationality?: string
+  postal_code?: string
+  address?: string
+  phone?: string
+  mobile?: string
+  email?: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
+  emergency_contact_relationship?: string
+  termination_date?: string
+  termination_reason?: string
+  status?: string
+  contract_type?: string
+  employment_type?: string
+  factory_id?: number
+  factory_line_id?: number
+  company_name?: string
+  plant_name?: string
+  department?: string
+  line_name?: string
+  position?: string
+  hourly_rate?: number
+  billing_rate?: number
+  transportation_allowance?: number
+  visa_type?: string
+  visa_status?: string
+  visa_expiry_date?: string
+  zairyu_card_number?: string
+  zairyu_card_expiry?: string
+  passport_number?: string
+  passport_expiry?: string
+  has_employment_insurance?: boolean
+  employment_insurance_number?: string
+  has_health_insurance?: boolean
+  health_insurance_number?: string
+  has_pension_insurance?: boolean
+  pension_insurance_number?: string
+  has_workers_comp?: boolean
+  yukyu_total?: number
+  yukyu_used?: number
+  yukyu_remaining?: number
+  yukyu_grant_date?: string
+  apartment_id?: number
+  apartment_name?: string
+  apartment_room?: string
+  apartment_rent?: number
+  is_corporate_housing?: boolean
+  housing_subsidy?: number
+  bank_name?: string
+  bank_branch?: string
+  bank_account_type?: string
+  bank_account_number?: string
+  bank_account_holder?: string
+  qualifications?: string
+  drivers_license?: string
+  drivers_license_expiry?: string
+  forklift_license?: boolean
+  notes?: string
+  photo_url?: string
+}
 
 export interface EmployeeResponse {
   id: number

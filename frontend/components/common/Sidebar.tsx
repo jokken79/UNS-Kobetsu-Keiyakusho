@@ -31,6 +31,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
     </svg>
   ),
+  Sync: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+  ),
   Building: () => (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
@@ -73,6 +78,18 @@ const navigation = [
     description: '契約書一覧',
   },
   {
+    name: '従業員管理',
+    href: '/employees',
+    icon: Icons.Users,
+    description: '従業員一覧',
+  },
+  {
+    name: '派遣先企業',
+    href: '/factories',
+    icon: Icons.Building,
+    description: '企業・工場一覧',
+  },
+  {
     name: '従業員配属',
     href: '/assign',
     icon: Icons.Users,
@@ -89,6 +106,12 @@ const navigation = [
     href: '/import',
     icon: Icons.Import,
     description: 'Excel/JSON取込',
+  },
+  {
+    name: 'データ同期',
+    href: '/sync',
+    icon: Icons.Sync,
+    description: 'ネットワーク同期',
   },
 ]
 
@@ -123,6 +146,7 @@ export function Sidebar() {
         <ul className="space-y-1.5">
           {navigation.map((item) => {
             const Icon = item.icon
+            const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
 
             return (
               <li key={item.name}>

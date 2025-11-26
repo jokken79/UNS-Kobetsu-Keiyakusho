@@ -14,6 +14,8 @@ import type {
   LoginRequest,
   TokenResponse,
   User,
+  FactoryCreate,
+  FactoryUpdate,
   FactoryResponse,
   FactoryListItem,
   CompanyOption,
@@ -21,6 +23,8 @@ import type {
   DepartmentOption,
   LineOption,
   FactoryCascadeData,
+  EmployeeCreate,
+  EmployeeUpdate,
   EmployeeResponse,
   EmployeeListItem,
   EmployeeForContract,
@@ -28,7 +32,7 @@ import type {
   EmployeeListParams,
 } from '@/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8010/api/v1'
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'access_token'
@@ -420,6 +424,23 @@ export const factoryApi = {
     return response.data
   },
 
+  // Create factory
+  create: async (data: FactoryCreate): Promise<FactoryResponse> => {
+    const response = await apiClient.post<FactoryResponse>('/factories', data)
+    return response.data
+  },
+
+  // Update factory
+  update: async (id: number, data: FactoryUpdate): Promise<FactoryResponse> => {
+    const response = await apiClient.put<FactoryResponse>(`/factories/${id}`, data)
+    return response.data
+  },
+
+  // Delete factory
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/factories/${id}`)
+  },
+
   // Cascade dropdowns
   getCompanies: async (search?: string): Promise<CompanyOption[]> => {
     const response = await apiClient.get<CompanyOption[]>('/factories/dropdown/companies', {
@@ -468,6 +489,23 @@ export const employeeApi = {
   getById: async (id: number): Promise<EmployeeResponse> => {
     const response = await apiClient.get<EmployeeResponse>(`/employees/${id}`)
     return response.data
+  },
+
+  // Create employee
+  create: async (data: EmployeeCreate): Promise<EmployeeResponse> => {
+    const response = await apiClient.post<EmployeeResponse>('/employees', data)
+    return response.data
+  },
+
+  // Update employee
+  update: async (id: number, data: EmployeeUpdate): Promise<EmployeeResponse> => {
+    const response = await apiClient.put<EmployeeResponse>(`/employees/${id}`, data)
+    return response.data
+  },
+
+  // Delete employee
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/employees/${id}`)
   },
 
   // Get employees for contract selection
