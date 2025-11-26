@@ -121,22 +121,23 @@ Este contrato es **OBLIGATORIO** por ley y debe incluir **16 items específicos*
 git clone https://github.com/jokken79/UNS-Kobetsu-Keiyakusho.git
 cd UNS-Kobetsu-Keiyakusho
 
-# 2. Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus credenciales
+# 2. El archivo .env ya está configurado ✅
+# (SECRET_KEY seguro, puertos personalizados, etc.)
 
 # 3. Iniciar servicios con Docker
 docker compose up -d
 
 # 4. Aplicar migraciones
-docker exec -it kobetsu-backend alembic upgrade head
+docker exec -it uns-kobetsu-backend alembic upgrade head
 
-# 5. Crear usuario admin
-docker exec -it kobetsu-backend python scripts/create_admin.py
+# 5. Crear usuario admin (opcional)
+docker exec -it uns-kobetsu-backend python scripts/create_admin.py
 
 # 6. Importar datos demo (opcional)
-docker exec -it kobetsu-backend python scripts/import_demo_data.py
+docker exec -it uns-kobetsu-backend python scripts/import_demo_data.py
 ```
+
+**📖 Ver guía detallada:** [INICIO_RAPIDO.md](INICIO_RAPIDO.md)
 
 ### **Opción 2: Integración con UNS-ClaudeJP**
 
@@ -169,9 +170,17 @@ docker compose restart backend frontend
 
 ### **1. Acceder al Sistema**
 ```
-Frontend: http://localhost:3000/kobetsu
-API Docs: http://localhost:8000/api/docs
+Frontend: http://localhost:3010/kobetsu
+Backend API: http://localhost:8010/docs
+Adminer DB: http://localhost:8090
 ```
+
+**Puertos personalizados** para evitar conflictos:
+- PostgreSQL: 5442
+- Redis: 6389
+- Backend: 8010
+- Frontend: 3010
+- Adminer: 8090
 
 ### **2. Crear Nuevo Contrato**
 
