@@ -2,7 +2,7 @@
 Kobetsu Keiyakusho Service
 Business logic for individual contract management.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any, Tuple
 from decimal import Decimal
 
@@ -258,7 +258,7 @@ class KobetsuService:
         for field, value in update_data.items():
             setattr(contract, field, value)
 
-        contract.updated_at = datetime.utcnow()
+        contract.updated_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(contract)
 
@@ -280,7 +280,7 @@ class KobetsuService:
 
         # Soft delete - change status to cancelled
         contract.status = "cancelled"
-        contract.updated_at = datetime.utcnow()
+        contract.updated_at = datetime.now(timezone.utc)
         self.db.commit()
 
         return True
@@ -328,7 +328,7 @@ class KobetsuService:
             return None
 
         contract.status = "active"
-        contract.updated_at = datetime.utcnow()
+        contract.updated_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(contract)
 
@@ -357,7 +357,7 @@ class KobetsuService:
 
         # Mark original as renewed
         original.status = "renewed"
-        original.updated_at = datetime.utcnow()
+        original.updated_at = datetime.now(timezone.utc)
 
         # Get employee IDs from original
         employee_ids = [e.employee_id for e in original.employees]
@@ -529,7 +529,7 @@ class KobetsuService:
                     KobetsuKeiyakusho.dispatch_end_date < today,
                 )
             )
-            .update({"status": "expired", "updated_at": datetime.utcnow()})
+            .update({"status": "expired", "updated_at": datetime.now(timezone.utc)})
         )
         self.db.commit()
         return result
@@ -555,7 +555,7 @@ class KobetsuService:
 
         contract.pdf_path = pdf_path
         contract.signed_date = date.today()
-        contract.updated_at = datetime.utcnow()
+        contract.updated_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(contract)
 
@@ -603,7 +603,7 @@ class KobetsuService:
 
         # Update worker count
         contract.number_of_workers += 1
-        contract.updated_at = datetime.utcnow()
+        contract.updated_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return True
@@ -640,7 +640,7 @@ class KobetsuService:
 
         if result:
             contract.number_of_workers = max(0, contract.number_of_workers - 1)
-            contract.updated_at = datetime.utcnow()
+            contract.updated_at = datetime.now(timezone.utc)
             self.db.commit()
             return True
 
