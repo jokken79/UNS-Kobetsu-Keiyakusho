@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '@/styles/globals.css'
 import { Providers } from './providers'
-import { Sidebar } from '@/components/common/Sidebar'
+import { SidebarClient } from '@/components/common/SidebarClient'
 import { Header } from '@/components/common/Header'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -24,7 +24,7 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen bg-gray-50">
             {/* Sidebar */}
-            <Sidebar />
+            <SidebarClient />
 
             {/* Main Content */}
             <div className="lg:ml-72 min-h-screen flex flex-col">

@@ -242,7 +242,7 @@ class EmployeeAssignment(BaseModel):
 class EmployeeExcelImport(BaseModel):
     """Schema for importing employee from Excel."""
     現在: Optional[str] = None  # 在籍/退社
-    社員№: str
+    社員番号: str
     派遣先: Optional[str] = None
     配属先: Optional[str] = None
     氏名: str

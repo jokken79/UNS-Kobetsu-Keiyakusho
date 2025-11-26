@@ -66,7 +66,7 @@ _demo_users = {
         "id": 1,
         "email": "admin@example.com",
         "full_name": "Admin User",
-        "hashed_password": get_password_hash("admin123"),
+        "hashed_password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6ukx.LrD5K",  # pre-hashed "admin123"
         "role": "admin",
         "is_active": True,
     }
