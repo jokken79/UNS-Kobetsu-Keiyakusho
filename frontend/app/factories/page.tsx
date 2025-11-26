@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { factoryApi } from '@/lib/api'
 import type { FactoryListItem } from '@/types'
 
 export default function FactoriesPage() {
+  const router = useRouter()
   const [search, setSearch] = useState('')
 
   // Fetch factories
@@ -28,14 +30,30 @@ export default function FactoriesPage() {
 
   const companyNames = Object.keys(groupedFactories).sort()
 
+  const handleRowClick = (factoryId: number) => {
+    router.push(`/factories/${factoryId}`)
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">派遣先企業・工場管理</h1>
-        <p className="text-gray-600 mt-2">
-          派遣先企業と工場の情報を確認・管理
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">派遣先企業・工場管理</h1>
+          <p className="text-gray-600 mt-2">
+            派遣先企業と工場の情報を確認・管理
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push('/factories/create')}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          新規工場
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -169,7 +187,11 @@ export default function FactoriesPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {companyFactories.map((factory) => (
-                        <tr key={factory.id} className="hover:bg-gray-50 transition-colors">
+                        <tr
+                          key={factory.id}
+                          onClick={() => handleRowClick(factory.id)}
+                          className="hover:bg-blue-50 transition-colors cursor-pointer"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{factory.plant_name}</div>
                             <div className="text-sm text-gray-500">{factory.factory_id}</div>

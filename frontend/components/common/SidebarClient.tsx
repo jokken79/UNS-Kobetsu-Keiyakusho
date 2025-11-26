@@ -73,6 +73,18 @@ const navigation = [
     description: '契約書一覧',
   },
   {
+    name: '従業員管理',
+    href: '/employees',
+    icon: Icons.Users,
+    description: '従業員一覧',
+  },
+  {
+    name: '派遣先企業',
+    href: '/factories',
+    icon: Icons.Building,
+    description: '企業・工場一覧',
+  },
+  {
     name: '従業員配属',
     href: '/assign',
     icon: Icons.Users,
