@@ -1,116 +1,81 @@
 #!/bin/bash
-# ============================================
-# UNS Kobetsu Keiyakusho - Unix Startup Script
-# ============================================
 
-set -e
+# ========================================
+# UNS Kobetsu Keiyakusho - Script de Inicio
+# ========================================
 
-# Colors for output
-RED='\033[0;31m'
+echo "🚀 Iniciando UNS Kobetsu Keiyakusho..."
+echo ""
+
+# Colores para output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo ""
-echo -e "${BLUE}=========================================="
-echo "  UNS Kobetsu Keiyakusho System"
-echo "  Individual Contract Management"
-echo -e "==========================================${NC}"
-echo ""
-
-# Check if Docker is running
+# Verificar que Docker esté corriendo
 if ! docker info > /dev/null 2>&1; then
-    echo -e "${RED}[ERROR] Docker is not running. Please start Docker first.${NC}"
+    echo -e "${RED}❌ Error: Docker no está corriendo${NC}"
+    echo "Por favor inicia Docker Desktop y vuelve a intentar"
     exit 1
 fi
 
-# Check if .env file exists
-if [ ! -f ".env" ]; then
-    echo -e "${YELLOW}[INFO] Creating .env file from .env.example...${NC}"
+echo -e "${GREEN}✅ Docker está corriendo${NC}"
+
+# Verificar que existe .env
+if [ ! -f .env ]; then
+    echo -e "${RED}❌ Error: Archivo .env no encontrado${NC}"
+    echo "Creando .env desde .env.example..."
     cp .env.example .env
-    echo -e "${YELLOW}[WARNING] Please edit .env file with your settings.${NC}"
-    echo ""
+    echo -e "${GREEN}✅ Archivo .env creado${NC}"
 fi
 
-# Parse command
-ACTION="${1:-up}"
+# Iniciar servicios
+echo ""
+echo -e "${YELLOW}📦 Iniciando contenedores Docker...${NC}"
+docker compose up -d
 
-case "$ACTION" in
-    up)
-        echo -e "${GREEN}[INFO] Starting all services...${NC}"
-        docker-compose up -d
-        echo ""
-        echo -e "${GREEN}[SUCCESS] Services started!${NC}"
-        echo ""
-        echo "Access points:"
-        echo "  - Frontend:  http://localhost:3010"
-        echo "  - Backend:   http://localhost:8010"
-        echo "  - API Docs:  http://localhost:8010/docs"
-        echo "  - Adminer:   http://localhost:8090"
-        echo ""
-        ;;
-    down)
-        echo -e "${YELLOW}[INFO] Stopping all services...${NC}"
-        docker-compose down
-        echo -e "${GREEN}[SUCCESS] Services stopped.${NC}"
-        ;;
-    restart)
-        echo -e "${YELLOW}[INFO] Restarting all services...${NC}"
-        docker-compose down
-        docker-compose up -d
-        echo -e "${GREEN}[SUCCESS] Services restarted.${NC}"
-        ;;
-    logs)
-        echo -e "${BLUE}[INFO] Showing logs (Ctrl+C to exit)...${NC}"
-        docker-compose logs -f
-        ;;
-    build)
-        echo -e "${YELLOW}[INFO] Rebuilding all containers...${NC}"
-        docker-compose build --no-cache
-        docker-compose up -d
-        echo -e "${GREEN}[SUCCESS] Containers rebuilt and started.${NC}"
-        ;;
-    clean)
-        echo -e "${RED}[WARNING] This will remove all containers, volumes, and images.${NC}"
-        read -p "Are you sure? (y/N): " confirm
-        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-            docker-compose down -v --rmi local
-            echo -e "${GREEN}[SUCCESS] Cleanup complete.${NC}"
-        fi
-        ;;
-    migrate)
-        echo -e "${BLUE}[INFO] Running database migrations...${NC}"
-        docker-compose exec kobetsu-backend alembic upgrade head
-        echo -e "${GREEN}[SUCCESS] Migrations complete.${NC}"
-        ;;
-    seed)
-        echo -e "${BLUE}[INFO] Seeding database with sample data...${NC}"
-        docker-compose exec kobetsu-backend python -m app.scripts.seed_data
-        echo -e "${GREEN}[SUCCESS] Database seeded.${NC}"
-        ;;
-    status)
-        echo -e "${BLUE}[INFO] Service status:${NC}"
-        echo ""
-        docker-compose ps
-        ;;
-    shell)
-        echo -e "${BLUE}[INFO] Opening shell in backend container...${NC}"
-        docker-compose exec kobetsu-backend /bin/bash
-        ;;
-    *)
-        echo "Usage: ./start.sh [up|down|restart|logs|build|clean|migrate|seed|status|shell]"
-        echo ""
-        echo "Commands:"
-        echo "  up       - Start all services (default)"
-        echo "  down     - Stop all services"
-        echo "  restart  - Restart all services"
-        echo "  logs     - Show service logs"
-        echo "  build    - Rebuild containers from scratch"
-        echo "  clean    - Remove all containers and volumes"
-        echo "  migrate  - Run database migrations"
-        echo "  seed     - Seed database with sample data"
-        echo "  status   - Show service status"
-        echo "  shell    - Open shell in backend container"
-        ;;
-esac
+# Esperar a que los servicios estén listos
+echo ""
+echo -e "${YELLOW}⏳ Esperando a que los servicios estén listos...${NC}"
+sleep 10
+
+# Verificar estado de contenedores
+echo ""
+echo -e "${YELLOW}🔍 Verificando estado de contenedores...${NC}"
+docker compose ps
+
+# Aplicar migraciones
+echo ""
+echo -e "${YELLOW}🗄️  Aplicando migraciones de base de datos...${NC}"
+docker exec -it uns-kobetsu-backend alembic upgrade head
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Migraciones aplicadas correctamente${NC}"
+else
+    echo -e "${RED}⚠️  Error al aplicar migraciones${NC}"
+fi
+
+# Mostrar URLs
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}✅ UNS Kobetsu Keiyakusho está corriendo!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+echo -e "🌐 Frontend:   ${YELLOW}http://localhost:3010${NC}"
+echo -e "📚 API Docs:   ${YELLOW}http://localhost:8010/docs${NC}"
+echo -e "🗄️  Adminer:    ${YELLOW}http://localhost:8090${NC}"
+echo ""
+echo -e "${GREEN}Credenciales de Adminer:${NC}"
+echo "  Sistema:     PostgreSQL"
+echo "  Servidor:    uns-kobetsu-db"
+echo "  Usuario:     kobetsu_admin"
+echo "  Contraseña:  KobetsuSecure2024!Pass"
+echo "  Base datos:  kobetsu_db"
+echo ""
+echo -e "${YELLOW}📝 Comandos útiles:${NC}"
+echo "  Ver logs:        docker compose logs -f"
+echo "  Detener:         docker compose down"
+echo "  Reiniciar:       docker compose restart"
+echo ""
+echo -e "${GREEN}¡Listo para usar! 🎉${NC}"
