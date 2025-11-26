@@ -37,22 +37,16 @@ class DispatchDocumentService:
     # ========================================
 
     def _format_date_japanese(self, d: date) -> str:
-        """Format date in Japanese style (令和X年X月X日)."""
+        """Format date in Japanese style (2024年12月1日)."""
         if d is None:
             return ""
-        if d.year >= 2019:
-            reiwa_year = d.year - 2018
-            return f"令和{reiwa_year}年{d.month}月{d.day}日"
         return d.strftime("%Y年%m月%d日")
 
     def _format_date_short(self, d: date) -> str:
-        """Short date format (R6.12.1)."""
+        """Short date format (2024.12.1)."""
         if d is None:
             return ""
-        if d.year >= 2019:
-            reiwa_year = d.year - 2018
-            return f"R{reiwa_year}.{d.month}.{d.day}"
-        return d.strftime("%Y.%m.%d")
+        return f"{d.year}.{d.month}.{d.day}"
 
     def _format_time(self, t) -> str:
         """Format time as HH:MM."""
