@@ -10,6 +10,10 @@ from .factories import router as factories_router
 from .employees import router as employees_router
 from .imports import router as imports_router
 from .documents import router as documents_router
+from .audit import router as audit_router
+from .webhooks import router as webhooks_router
+from .comments import router as comments_router
+from .approvals import router as approvals_router
 
 api_router = APIRouter()
 
@@ -48,4 +52,28 @@ api_router.include_router(
     documents_router,
     prefix="/documents",
     tags=["Document Generation (書類生成)"]
+)
+
+api_router.include_router(
+    audit_router,
+    prefix="/audit",
+    tags=["Audit Logs (監査ログ)"]
+)
+
+api_router.include_router(
+    webhooks_router,
+    prefix="/webhooks",
+    tags=["Webhooks (Webhook連携)"]
+)
+
+api_router.include_router(
+    comments_router,
+    prefix="/comments",
+    tags=["Comments (コメント)"]
+)
+
+api_router.include_router(
+    approvals_router,
+    prefix="/approvals",
+    tags=["Approvals (承認ワークフロー)"]
 )
