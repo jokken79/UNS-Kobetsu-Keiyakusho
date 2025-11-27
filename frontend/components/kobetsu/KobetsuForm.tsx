@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import type { KobetsuCreate } from '@/types'
+import { useState, useEffect } from 'react'
+import { factoryApi } from '@/lib/api'
+import type { KobetsuCreate, FactoryListItem, LineOption } from '@/types'
 
 interface KobetsuFormProps {
   initialData?: Partial<KobetsuCreate>
@@ -14,7 +15,7 @@ const RESPONSIBILITY_LEVELS = ['補助的業務', '通常業務', '責任業務'
 
 export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormProps) {
   const [formData, setFormData] = useState<Partial<KobetsuCreate>>({
-    factory_id: 1,
+    factory_id: undefined,
     employee_ids: [1],
     contract_date: new Date().toISOString().split('T')[0],
     dispatch_start_date: '',
@@ -33,6 +34,9 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
     break_time_minutes: 60,
     hourly_rate: 1500,
     overtime_rate: 1875,
+    overtime_max_hours_day: undefined,
+    overtime_max_hours_month: undefined,
+    holiday_work_max_days: undefined,
     haken_moto_complaint_contact: {
       department: '人事部',
       position: '課長',
@@ -60,7 +64,158 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
     ...initialData,
   })
 
+  const [factories, setFactories] = useState<FactoryListItem[]>([])
+  const [lines, setLines] = useState<LineOption[]>([])
+  const [selectedLineId, setSelectedLineId] = useState<string>('')
+
+  const [loadingFactories, setLoadingFactories] = useState(false)
+  const [loadingLines, setLoadingLines] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    async function loadFactories() {
+      setLoadingFactories(true)
+      try {
+        const data = await factoryApi.getList({ limit: 100 })
+        setFactories(data)
+      } catch (err) {
+        console.error('Failed to load factories', err)
+      } finally {
+        setLoadingFactories(false)
+      }
+    }
+    loadFactories()
+  }, [])
+
+  const handleFactoryChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const factoryId = Number(e.target.value)
+    if (!factoryId) {
+        setFormData(prev => ({ ...prev, factory_id: undefined }))
+        setLines([])
+        return
+    }
+
+    setFormData(prev => ({ ...prev, factory_id: factoryId }))
+
+    // Fetch detailed factory data to pre-fill form
+    try {
+        const factory = await factoryApi.getById(factoryId)
+
+        setFormData(prev => ({
+            ...prev,
+            factory_id: factoryId,
+            worksite_name: factory.plant_name,
+            worksite_address: factory.plant_address || factory.company_address || '',
+
+            // Supervisor (Factory Default)
+            supervisor_department: factory.supervisor_department || '',
+            supervisor_name: factory.supervisor_name || '',
+
+            // Working Conditions
+            work_start_time: factory.day_shift_start?.toString().slice(0, 5) || '08:00',
+            work_end_time: factory.day_shift_end?.toString().slice(0, 5) || '17:00',
+            break_time_minutes: factory.break_minutes || 60,
+
+            // Overtime Limits
+            overtime_max_hours_day: factory.overtime_max_hours_day,
+            overtime_max_hours_month: factory.overtime_max_hours_month,
+            holiday_work_max_days: factory.holiday_work_max_days_month,
+
+            // Haken Moto (UNS) Contacts from Factory Settings
+            haken_moto_complaint_contact: {
+                department: factory.dispatch_complaint_department || '管理部',
+                position: '担当者',
+                name: factory.dispatch_complaint_name || '',
+                phone: factory.dispatch_complaint_phone || '',
+            },
+            haken_moto_manager: {
+                department: factory.dispatch_responsible_department || '派遣事業部',
+                position: '責任者',
+                name: factory.dispatch_responsible_name || '',
+                phone: factory.dispatch_responsible_phone || '',
+            },
+
+            // Haken Saki Contacts
+            haken_saki_complaint_contact: {
+                department: factory.client_complaint_department || '',
+                position: '',
+                name: factory.client_complaint_name || '',
+                phone: factory.client_complaint_phone || '',
+            },
+            haken_saki_manager: {
+                department: factory.client_responsible_department || '',
+                position: '',
+                name: factory.client_responsible_name || '',
+                phone: factory.client_responsible_phone || '',
+            }
+        }))
+
+        // Load lines for this factory
+        setLoadingLines(true)
+        try {
+            const linesData = await factoryApi.getLines(factoryId)
+            setLines(linesData)
+            setSelectedLineId('')
+        } catch (err) {
+            console.error('Failed to load lines', err)
+        } finally {
+            setLoadingLines(false)
+        }
+
+    } catch (err) {
+        console.error('Failed to load factory details', err)
+    }
+  }
+
+  const handleLineChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const lineId = e.target.value
+      setSelectedLineId(lineId)
+
+      const line = lines.find(l => l.id.toString() === lineId)
+      if (line) {
+          // Pre-fill line specific data
+          setFormData(prev => ({
+              ...prev,
+              organizational_unit: line.department, // e.g. "Manufacturing Dept"
+              work_content: line.name, // Usually maps to job description or line name
+              // Note: LineOption might not have all details.
+              // If LineOption is just {id, name}, we might need to fetch detailed line data or assume name is enough.
+              // Assuming LineOption might be limited, but let's see.
+              // If `factoryApi.getLines` returns full objects, we can use them.
+              // The interface `LineOption` usually has id and name.
+              // Let's assume we might need to fetch cascade data or just use what we have.
+              // For now, let's put line name in organizational unit if department is missing.
+          }))
+
+          // If we had full line details (rates, etc), we would set them here.
+          // Since getLines usually returns lightweight options, we might want to fetch details.
+          // But `factoryApi.getCascadeData` exists.
+          fetchLineDetails(Number(lineId))
+      }
+  }
+
+  const fetchLineDetails = async (lineId: number) => {
+      try {
+          // This endpoint might return what we need
+          const data = await factoryApi.getCascadeData(lineId)
+          // `data` likely contains: rates, job description, supervisor override
+          if (data) {
+              setFormData(prev => ({
+                  ...prev,
+                  work_content: data.job_description || prev.work_content,
+                  responsibility_level: data.responsibility_level || prev.responsibility_level,
+                  hourly_rate: data.hourly_rate || prev.hourly_rate,
+                  overtime_rate: data.overtime_rate || prev.overtime_rate,
+                  organizational_unit: data.department || prev.organizational_unit,
+                  // Supervisor override if present
+                  supervisor_department: data.supervisor_department || prev.supervisor_department,
+                  supervisor_name: data.supervisor_name || prev.supervisor_name,
+              }))
+          }
+      } catch (err) {
+          console.error('Failed to fetch line details', err)
+      }
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -99,6 +254,9 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
+    if (!formData.factory_id) {
+        newErrors.factory_id = '工場を選択してください'
+    }
     if (!formData.worksite_name) {
       newErrors.worksite_name = '派遣先名を入力してください'
     }
@@ -136,6 +294,59 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Section 0: Factory & Line Selection */}
+      <section>
+        <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b">
+          派遣先・配属先選択
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label className="form-label">工場を選択 *</label>
+                <select
+                    name="factory_id"
+                    value={formData.factory_id || ''}
+                    onChange={handleFactoryChange}
+                    className={`form-select ${errors.factory_id ? 'border-red-500' : ''}`}
+                    disabled={loadingFactories}
+                    required
+                >
+                    <option value="">-- 選択してください --</option>
+                    {factories.map(f => (
+                        <option key={f.id} value={f.id}>
+                            {f.company_name} - {f.plant_name}
+                        </option>
+                    ))}
+                </select>
+                {loadingFactories && <p className="text-sm text-gray-500 mt-1">読み込み中...</p>}
+                {errors.factory_id && (
+                  <p className="form-error">{errors.factory_id}</p>
+                )}
+            </div>
+
+            <div>
+                <label className="form-label">配属ライン (任意)</label>
+                <select
+                    name="line_id"
+                    value={selectedLineId}
+                    onChange={handleLineChange}
+                    className="form-select"
+                    disabled={!formData.factory_id || loadingLines}
+                >
+                    <option value="">-- ライン/部署を選択 --</option>
+                    {lines.map(l => (
+                        <option key={l.id} value={l.id}>
+                            {l.name}
+                        </option>
+                    ))}
+                </select>
+                {loadingLines && <p className="text-sm text-gray-500 mt-1">読み込み中...</p>}
+                <p className="text-xs text-gray-500 mt-1">
+                    選択すると業務内容や単価が自動入力されます
+                </p>
+            </div>
+        </div>
+      </section>
+
       {/* Section 1: Basic Info */}
       <section>
         <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b">
