@@ -2,10 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including LibreOffice and Japanese fonts
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     curl \
+    libreoffice-writer \
+    fonts-ipafont \
+    fonts-ipaexfont \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
