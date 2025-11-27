@@ -93,10 +93,41 @@ This file maintains persistent context across Claude sessions. Update it after m
 
 ## Ongoing Issues
 
-### [Template - Track active issues]
-- **Status**: open/investigating/blocked
-- **Description**: What's wrong
-- **Last activity**: Date and action
+### CRITICAL: Demo Authentication System
+- **Status**: open
+- **Location**: `backend/app/api/v1/auth.py:62-73`
+- **Description**: Users stored in-memory `_demo_users` dict, not in database. Model `User` exists but is NOT used.
+- **Impact**: Users lost on restart, no login page in frontend
+- **Fix Required**: Implement auth using existing `User` model
+- **Last activity**: 2025-11-27 - Identified in audit
+
+### CRITICAL: Hardcoded Windows Path in Docker
+- **Status**: open
+- **Location**: `docker-compose.yml:103`
+- **Description**: `E:/BASEDATEJP:/network_data` won't work on Linux/Docker
+- **Impact**: Docker container fails to mount volume
+- **Fix Required**: Use environment variable or make volume optional
+- **Last activity**: 2025-11-27 - Identified in audit
+
+### MEDIUM: Hardcoded API URL in Sync Page
+- **Status**: open
+- **Location**: `frontend/app/sync/page.tsx:16`
+- **Description**: Bypasses `NEXT_PUBLIC_API_URL` env var with hardcoded localhost
+- **Fix Required**: Use centralized api.ts client
+- **Last activity**: 2025-11-27 - Identified in audit
+
+### LOW: Redis Not Utilized
+- **Status**: open
+- **Location**: docker-compose.yml (configured), requirements.txt (installed)
+- **Description**: Redis configured but not used for caching or session management
+- **Fix Required**: Implement for token invalidation on logout
+- **Last activity**: 2025-11-27 - Identified in audit
+
+### Missing Frontend Pages
+- **Status**: open
+- **Description**: No login page (`/login`), no 404 page, no error boundaries
+- **Impact**: Cannot authenticate users via UI
+- **Last activity**: 2025-11-27 - Identified in audit
 
 ## Technical Debt
 
@@ -126,6 +157,18 @@ This file maintains persistent context across Claude sessions. Update it after m
 - Set up orchestrator CLAUDE.md
 - Created agents-registry.json for routing
 - Initialized project memory
+
+### 2025-11-27 - Full System Audit
+- Activated explorer agents to analyze backend and frontend
+- Identified 5 critical/medium/low issues:
+  1. CRITICAL: Demo auth system (in-memory users, not database)
+  2. CRITICAL: Windows path hardcoded in docker-compose
+  3. MEDIUM: Hardcoded API URL in sync page
+  4. LOW: Redis not utilized
+  5. Missing: Login page, error boundaries
+- Created .env file from .env.example
+- Updated project memory with known issues
+- Generated full diagnostic report
 
 ---
 
