@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import type { KobetsuCreate } from '@/types'
+import { useState, useEffect } from 'react'
+import { factoryApi } from '@/lib/api'
+import type { KobetsuCreate, FactoryListItem } from '@/types'
 
 interface KobetsuFormProps {
   initialData?: Partial<KobetsuCreate>
@@ -14,7 +15,7 @@ const RESPONSIBILITY_LEVELS = ['補助的業務', '通常業務', '責任業務'
 
 export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormProps) {
   const [formData, setFormData] = useState<Partial<KobetsuCreate>>({
-    factory_id: 1,
+    factory_id: undefined,
     employee_ids: [1],
     contract_date: new Date().toISOString().split('T')[0],
     dispatch_start_date: '',
@@ -60,7 +61,63 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
     ...initialData,
   })
 
+  const [factories, setFactories] = useState<FactoryListItem[]>([])
+  const [loadingFactories, setLoadingFactories] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    async function loadFactories() {
+      setLoadingFactories(true)
+      try {
+        const data = await factoryApi.getList({ limit: 100 })
+        setFactories(data)
+
+        // If initialData has factory_id, use it. Otherwise, if there are factories, select none by default
+        if (!initialData?.factory_id && data.length > 0) {
+            // Keep undefined to force user selection
+        }
+      } catch (err) {
+        console.error('Failed to load factories', err)
+      } finally {
+        setLoadingFactories(false)
+      }
+    }
+    loadFactories()
+  }, [initialData])
+
+  const handleFactoryChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const factoryId = Number(e.target.value)
+    if (!factoryId) return
+
+    setFormData(prev => ({ ...prev, factory_id: factoryId }))
+
+    // Fetch detailed factory data to pre-fill form
+    try {
+        const factory = await factoryApi.getById(factoryId)
+        setFormData(prev => ({
+            ...prev,
+            factory_id: factoryId,
+            worksite_name: factory.plant_name,
+            worksite_address: factory.plant_address || factory.company_address || '',
+            supervisor_department: factory.supervisor_department || '',
+            supervisor_name: factory.supervisor_name || '',
+            haken_saki_complaint_contact: {
+                department: factory.client_complaint_department || '',
+                position: '', // Usually not in factory data directly unless mapped
+                name: factory.client_complaint_name || '',
+                phone: factory.client_complaint_phone || '',
+            },
+            haken_saki_manager: {
+                department: factory.client_responsible_department || '',
+                position: '',
+                name: factory.client_responsible_name || '',
+                phone: factory.client_responsible_phone || '',
+            }
+        }))
+    } catch (err) {
+        console.error('Failed to load factory details', err)
+    }
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -99,6 +156,9 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
+    if (!formData.factory_id) {
+        newErrors.factory_id = '工場を選択してください'
+    }
     if (!formData.worksite_name) {
       newErrors.worksite_name = '派遣先名を入力してください'
     }
@@ -136,6 +196,37 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Section 0: Factory Selection */}
+      <section>
+        <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b">
+          派遣先選択
+        </h3>
+        <div className="grid grid-cols-1 gap-6">
+            <div>
+                <label className="form-label">工場を選択 *</label>
+                <select
+                    name="factory_id"
+                    value={formData.factory_id || ''}
+                    onChange={handleFactoryChange}
+                    className={`form-select ${errors.factory_id ? 'border-red-500' : ''}`}
+                    disabled={loadingFactories}
+                    required
+                >
+                    <option value="">-- 選択してください --</option>
+                    {factories.map(f => (
+                        <option key={f.id} value={f.id}>
+                            {f.company_name} - {f.plant_name}
+                        </option>
+                    ))}
+                </select>
+                {loadingFactories && <p className="text-sm text-gray-500 mt-1">読み込み中...</p>}
+                {errors.factory_id && (
+                  <p className="form-error">{errors.factory_id}</p>
+                )}
+            </div>
+        </div>
+      </section>
+
       {/* Section 1: Basic Info */}
       <section>
         <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b">
