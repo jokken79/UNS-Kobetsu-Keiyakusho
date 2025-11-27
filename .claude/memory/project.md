@@ -93,29 +93,6 @@ This file maintains persistent context across Claude sessions. Update it after m
 
 ## Ongoing Issues
 
-### CRITICAL: Demo Authentication System
-- **Status**: open
-- **Location**: `backend/app/api/v1/auth.py:62-73`
-- **Description**: Users stored in-memory `_demo_users` dict, not in database. Model `User` exists but is NOT used.
-- **Impact**: Users lost on restart, no login page in frontend
-- **Fix Required**: Implement auth using existing `User` model
-- **Last activity**: 2025-11-27 - Identified in audit
-
-### CRITICAL: Hardcoded Windows Path in Docker
-- **Status**: open
-- **Location**: `docker-compose.yml:103`
-- **Description**: `E:/BASEDATEJP:/network_data` won't work on Linux/Docker
-- **Impact**: Docker container fails to mount volume
-- **Fix Required**: Use environment variable or make volume optional
-- **Last activity**: 2025-11-27 - Identified in audit
-
-### MEDIUM: Hardcoded API URL in Sync Page
-- **Status**: open
-- **Location**: `frontend/app/sync/page.tsx:16`
-- **Description**: Bypasses `NEXT_PUBLIC_API_URL` env var with hardcoded localhost
-- **Fix Required**: Use centralized api.ts client
-- **Last activity**: 2025-11-27 - Identified in audit
-
 ### LOW: Redis Not Utilized
 - **Status**: open
 - **Location**: docker-compose.yml (configured), requirements.txt (installed)
@@ -124,10 +101,48 @@ This file maintains persistent context across Claude sessions. Update it after m
 - **Last activity**: 2025-11-27 - Identified in audit
 
 ### Missing Frontend Pages
-- **Status**: open
-- **Description**: No login page (`/login`), no 404 page, no error boundaries
-- **Impact**: Cannot authenticate users via UI
-- **Last activity**: 2025-11-27 - Identified in audit
+- **Status**: partial
+- **Description**: No 404 page, no error boundaries
+- **Impact**: User experience on errors not optimal
+- **Last activity**: 2025-11-27 - Login page added
+
+## Resolved Issues
+
+### CRITICAL: Demo Authentication System (FIXED)
+- **Status**: resolved
+- **Location**: `backend/app/api/v1/auth.py`
+- **Resolution**: Replaced in-memory `_demo_users` with database queries using User model
+- **Files Changed**:
+  - `backend/app/api/v1/auth.py` - All endpoints now use database
+  - `backend/app/core/security.py` - `get_current_user` verifies user in database
+  - `backend/scripts/create_admin.py` - Now actually inserts users to database
+  - `backend/tests/conftest.py` - Test fixtures create test user in database
+- **Resolved**: 2025-11-27
+
+### CRITICAL: Hardcoded Windows Path in Docker (FIXED)
+- **Status**: resolved
+- **Location**: `docker-compose.yml:103`
+- **Resolution**: Changed to environment variable with fallback: `${SYNC_SOURCE_PATH:-./data/sync}:/network_data`
+- **Resolved**: 2025-11-27
+
+### MEDIUM: Hardcoded API URL in Sync Page (FIXED)
+- **Status**: resolved
+- **Location**: `frontend/app/sync/page.tsx`
+- **Resolution**: Replaced raw axios with centralized `syncApi` from `lib/api.ts`
+- **Files Changed**:
+  - `frontend/lib/api.ts` - Added `syncApi` with getStatus, syncEmployees, syncFactories, syncAll
+  - `frontend/app/sync/page.tsx` - Now uses centralized API client
+- **Resolved**: 2025-11-27
+
+### Missing Login Page (FIXED)
+- **Status**: resolved
+- **Description**: Created login page at `/login`
+- **Files Created**:
+  - `frontend/app/login/page.tsx` - Login form with error handling
+  - `frontend/app/login/layout.tsx` - Minimal layout for login page
+  - `frontend/components/common/MainLayout.tsx` - Conditional layout wrapper
+- **Resolution**: Login page now available, sidebar/header hidden on login page
+- **Resolved**: 2025-11-27
 
 ## Technical Debt
 
@@ -169,6 +184,22 @@ This file maintains persistent context across Claude sessions. Update it after m
 - Created .env file from .env.example
 - Updated project memory with known issues
 - Generated full diagnostic report
+
+### 2025-11-27 - Critical Bug Fixes
+- **Authentication System Overhaul**:
+  - Replaced in-memory `_demo_users` dict with proper database User model
+  - Updated `auth.py` login, register, change-password, and get-current-user endpoints
+  - Updated `security.py` to verify user exists in database on each request
+  - Updated `create_admin.py` script to actually insert users into database
+  - Updated test fixtures in `conftest.py` to create test users in database
+- **Login Page Created**:
+  - New `/login` route with email/password form
+  - Conditional layout (no sidebar/header on login page)
+  - Created `MainLayout.tsx` for conditional rendering
+- **Sync Page Fixed**:
+  - Removed hardcoded `http://localhost:8010/api/v1`
+  - Added `syncApi` to centralized `lib/api.ts`
+  - Sync page now uses authenticated API client
 
 ---
 

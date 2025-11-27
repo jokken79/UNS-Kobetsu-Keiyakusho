@@ -16,62 +16,72 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.database import SessionLocal, engine
+from sqlalchemy.exc import IntegrityError
+from app.core.database import SessionLocal
 from app.core.security import get_password_hash
+from app.models.user import User
 
 
-def create_admin_user(email: str, password: str, full_name: str = "Admin User"):
+def create_admin_user(email: str, password: str, full_name: str = "Admin User") -> bool:
     """
     Create an admin user in the database.
 
-    In a full implementation, this would insert into a Users table.
-    For now, it prints the hashed password for manual configuration.
+    Args:
+        email: Admin email address
+        password: Admin password
+        full_name: Admin full name
+
+    Returns:
+        True if user created successfully, False otherwise
     """
-    # Hash the password
-    hashed_password = get_password_hash(password)
+    db = SessionLocal()
+    try:
+        # Check if user already exists
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
+            print(f"\nUser with email {email} already exists!")
+            print(f"User ID: {existing_user.id}")
+            print(f"Role: {existing_user.role}")
+            return False
 
-    print("\n" + "=" * 60)
-    print("Admin User Created")
-    print("=" * 60)
-    print(f"Email: {email}")
-    print(f"Full Name: {full_name}")
-    print(f"Role: admin")
-    print(f"Password Hash: {hashed_password}")
-    print("=" * 60)
+        # Hash the password
+        hashed_password = get_password_hash(password)
 
-    # In a full implementation, insert into database:
-    # db = SessionLocal()
-    # try:
-    #     from app.models.user import User
-    #     user = User(
-    #         email=email,
-    #         hashed_password=hashed_password,
-    #         full_name=full_name,
-    #         role="admin",
-    #         is_active=True,
-    #     )
-    #     db.add(user)
-    #     db.commit()
-    #     print(f"User {email} created successfully!")
-    # except Exception as e:
-    #     print(f"Error creating user: {e}")
-    #     db.rollback()
-    # finally:
-    #     db.close()
+        # Create user
+        user = User(
+            email=email,
+            hashed_password=hashed_password,
+            full_name=full_name,
+            role="admin",
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
-    print("\nTo use this admin user, add to the _demo_users dict in auth.py:")
-    print(f'''
-    "{email}": {{
-        "id": 1,
-        "email": "{email}",
-        "full_name": "{full_name}",
-        "hashed_password": "{hashed_password}",
-        "role": "admin",
-        "is_active": True,
-    }}
-    ''')
+        print("\n" + "=" * 60)
+        print("Admin User Created Successfully!")
+        print("=" * 60)
+        print(f"User ID: {user.id}")
+        print(f"Email: {user.email}")
+        print(f"Full Name: {user.full_name}")
+        print(f"Role: {user.role}")
+        print(f"Active: {user.is_active}")
+        print("=" * 60)
+        print("\nYou can now log in with these credentials at /api/v1/auth/login")
 
-    return True
+        return True
+
+    except IntegrityError as e:
+        print(f"\nError: Email {email} is already registered")
+        db.rollback()
+        return False
+    except Exception as e:
+        print(f"\nError creating user: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
 
 
 def main():

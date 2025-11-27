@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '@/styles/globals.css'
 import { Providers } from './providers'
-import { SidebarClient } from '@/components/common/SidebarClient'
-import { Header } from '@/components/common/Header'
+import { MainLayout } from '@/components/common/MainLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,28 +21,9 @@ export default function RootLayout({
     <html lang="ja">
       <body className={`${inter.className} antialiased`}>
         <Providers>
-          <div className="min-h-screen bg-gray-50">
-            {/* Sidebar */}
-            <SidebarClient />
-
-            {/* Main Content */}
-            <div className="lg:ml-72 min-h-screen flex flex-col">
-              {/* Header */}
-              <Header />
-
-              {/* Page Content */}
-              <main className="flex-1 p-4 lg:p-6 pt-20 lg:pt-6">
-                <div className="animate-fade-in">
-                  {children}
-                </div>
-              </main>
-
-              {/* Footer */}
-              <footer className="py-4 px-6 text-center text-sm text-gray-500 border-t border-gray-200 bg-white">
-                <p>&copy; {new Date().getFullYear()} 株式会社UNS企画. All rights reserved.</p>
-              </footer>
-            </div>
-          </div>
+          <MainLayout>
+            {children}
+          </MainLayout>
         </Providers>
       </body>
     </html>

@@ -100,7 +100,8 @@ services:
     volumes:
       - ./backend:/app
       - uns_kobetsu_outputs:/app/outputs
-      - E:/BASEDATEJP:/network_data
+      # Network data path - set SYNC_SOURCE_PATH env var or comment out for dev
+      - ${SYNC_SOURCE_PATH:-./data/sync}:/network_data
     depends_on:
       uns-kobetsu-db:
         condition: service_healthy
