@@ -203,6 +203,11 @@ export function SidebarClient() {
     return null // Avoid rendering until mounted
   }
 
+  // Don't render sidebar on login page
+  if (pathname === '/login') {
+    return null
+  }
+
   return (
     <>
       {/* Mobile Menu Button */}

@@ -181,15 +181,31 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    from app.models.user import User
+
     token = credentials.credentials
     token_data = verify_token(token)
 
-    # In a full implementation, you would query the user from database
-    # For now, return the token data as the user
+    # Verify user exists in database
+    user = db.query(User).filter(User.id == token_data.user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user account",
+        )
+
     return {
-        "id": token_data.user_id,
-        "email": token_data.email,
-        "role": token_data.role
+        "id": user.id,
+        "email": user.email,
+        "role": user.role
     }
 
 

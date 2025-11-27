@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import Link from 'next/link'
 
@@ -48,6 +49,7 @@ export function Header() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
   const { user, logout } = useAuthStore()
 
   // Close dropdown when clicking outside
@@ -60,6 +62,11 @@ export function Header() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Don't render header on login page
+  if (pathname === '/login') {
+    return null
+  }
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/60">

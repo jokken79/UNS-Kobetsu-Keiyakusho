@@ -13,7 +13,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.core.database import Base, get_db
-from app.core.security import create_access_token
+from app.core.security import create_access_token, get_password_hash
+from app.models.user import User
 
 
 # Test database URL (SQLite in-memory)
@@ -48,7 +49,24 @@ def db() -> Generator[Session, None, None]:
 
 
 @pytest.fixture(scope="function")
-def client(db: Session) -> Generator[TestClient, None, None]:
+def test_user(db: Session) -> User:
+    """Create a test user in the database."""
+    user = User(
+        id=1,
+        email="test@example.com",
+        hashed_password=get_password_hash("testpassword"),
+        full_name="Test User",
+        role="admin",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def client(db: Session, test_user: User) -> Generator[TestClient, None, None]:
     """Create a test client with database override."""
 
     def override_get_db():
@@ -66,12 +84,12 @@ def client(db: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture
-def auth_headers() -> dict:
+def auth_headers(test_user: User) -> dict:
     """Create authentication headers for test requests."""
     token = create_access_token({
-        "sub": 1,
-        "email": "test@example.com",
-        "role": "admin",
+        "sub": test_user.id,
+        "email": test_user.email,
+        "role": test_user.role,
     })
     return {"Authorization": f"Bearer {token}"}
 

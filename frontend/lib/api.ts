@@ -621,4 +621,62 @@ export const importApi = {
   },
 }
 
+// ========================================
+// SYNC API - データ同期
+// ========================================
+
+export interface SyncStatus {
+  employees?: {
+    total: number
+    active: number
+    resigned: number
+  }
+  factories?: {
+    total: number
+    lines: number
+  }
+}
+
+export interface SyncResult {
+  employees?: {
+    total: number
+    created: number
+    updated: number
+    errors: { row: number; message: string }[]
+  }
+  factories?: {
+    total: number
+    created: number
+    updated: number
+    errors: { row: number; message: string }[]
+  }
+  elapsed_seconds?: number
+}
+
+export const syncApi = {
+  // Get current sync status
+  getStatus: async (): Promise<SyncStatus> => {
+    const response = await apiClient.get<SyncStatus>('/sync/status')
+    return response.data
+  },
+
+  // Sync employees from master file
+  syncEmployees: async (): Promise<SyncResult> => {
+    const response = await apiClient.post<SyncResult>('/sync/employees')
+    return response.data
+  },
+
+  // Sync factories from master file
+  syncFactories: async (): Promise<SyncResult> => {
+    const response = await apiClient.post<SyncResult>('/sync/factories')
+    return response.data
+  },
+
+  // Sync all data
+  syncAll: async (): Promise<SyncResult> => {
+    const response = await apiClient.post<SyncResult>('/sync/all')
+    return response.data
+  },
+}
+
 export default apiClient
