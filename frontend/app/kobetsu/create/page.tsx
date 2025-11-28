@@ -21,7 +21,19 @@ export default function CreateKobetsuPage() {
       router.push(`/kobetsu/${data.id}`)
     },
     onError: (error: any) => {
-      setError(error.response?.data?.detail || 'エラーが発生しました')
+      const detail = error.response?.data?.detail
+      if (Array.isArray(detail)) {
+        // FastAPI validation errors are arrays of {type, loc, msg, input, ctx}
+        const messages = detail.map((err: any) => {
+          const field = err.loc?.slice(1).join('.') || 'Unknown'
+          return `${field}: ${err.msg}`
+        }).join('\n')
+        setError(messages || 'バリデーションエラーが発生しました')
+      } else if (typeof detail === 'string') {
+        setError(detail)
+      } else {
+        setError('エラーが発生しました')
+      }
     },
   })
 
@@ -49,7 +61,7 @@ export default function CreateKobetsuPage() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md whitespace-pre-line">
           {error}
         </div>
       )}

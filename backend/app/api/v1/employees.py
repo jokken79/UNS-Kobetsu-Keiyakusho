@@ -5,7 +5,7 @@ Provides CRUD operations and filtering for dispatch workers.
 """
 from typing import List, Optional
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
@@ -17,17 +17,17 @@ from app.schemas.employee import (
     EmployeeStats, EmployeeAssignment, EmployeeForContract
 )
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 # ========================================
 # EMPLOYEE CRUD
 # ========================================
 
-@router.get("/", response_model=List[EmployeeListItem])
+@router.get("", response_model=List[EmployeeListItem])
 async def list_employees(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=1000),
     search: Optional[str] = None,
     status: Optional[str] = Query("active", description="Employee status filter"),
     company_name: Optional[str] = None,
@@ -220,7 +220,7 @@ async def get_employee(
 
     if not employee:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Employee not found"
         )
 
@@ -234,7 +234,7 @@ async def get_employee(
     return response
 
 
-@router.post("/", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=EmployeeResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_employee(
     employee_data: EmployeeCreate,
     db: Session = Depends(get_db)
@@ -247,7 +247,7 @@ async def create_employee(
 
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=f"Employee number '{employee_data.employee_number}' already exists"
         )
 
@@ -270,7 +270,7 @@ async def update_employee(
 
     if not employee:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Employee not found"
         )
 
@@ -284,7 +284,7 @@ async def update_employee(
     return EmployeeResponse.model_validate(employee)
 
 
-@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{employee_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_employee(
     employee_id: int,
     db: Session = Depends(get_db)
@@ -294,7 +294,7 @@ async def delete_employee(
 
     if not employee:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Employee not found"
         )
 

@@ -138,7 +138,7 @@ async def get_contracts_by_employee(
 # CRUD ENDPOINTS
 # ========================================
 
-@router.post("/", response_model=KobetsuKeiyakushoResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=KobetsuKeiyakushoResponse, status_code=status.HTTP_201_CREATED)
 async def create_contract(
     data: KobetsuKeiyakushoCreate,
     db: Session = Depends(get_db),

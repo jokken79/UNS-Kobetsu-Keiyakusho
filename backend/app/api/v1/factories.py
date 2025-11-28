@@ -19,14 +19,14 @@ from app.schemas.factory import (
     FactoryCascadeData, FactoryJSONImport
 )
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 # ========================================
 # FACTORY CRUD
 # ========================================
 
-@router.get("/", response_model=List[FactoryListItem])
+@router.get("", response_model=List[FactoryListItem])
 async def list_factories(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
