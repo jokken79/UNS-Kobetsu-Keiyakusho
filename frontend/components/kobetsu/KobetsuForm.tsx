@@ -1,8 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { factoryApi } from '@/lib/api'
-import type { KobetsuCreate, FactoryListItem } from '@/types'
+import { useState, useEffect, useMemo } from 'react'
+import { factoryApi, employeeApi } from '@/lib/api'
+import type { KobetsuCreate, FactoryListItem, EmployeeListItem } from '@/types'
+import {
+  HAKEN_MOTO_COMPLAINT_CONTACT,
+  HAKEN_MOTO_MANAGER,
+  DEFAULT_WORK_CONDITIONS,
+} from '@/config/uns-defaults'
 
 interface KobetsuFormProps {
   initialData?: Partial<KobetsuCreate>
@@ -16,42 +21,34 @@ const RESPONSIBILITY_LEVELS = ['補助的業務', '通常業務', '責任業務'
 export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormProps) {
   const [formData, setFormData] = useState<Partial<KobetsuCreate>>({
     factory_id: undefined,
-    employee_ids: [1],
+    employee_ids: [],
     contract_date: new Date().toISOString().split('T')[0],
     dispatch_start_date: '',
     dispatch_end_date: '',
     work_content: '',
-    responsibility_level: '通常業務',
+    responsibility_level: DEFAULT_WORK_CONDITIONS.responsibility_level,
     worksite_name: '',
     worksite_address: '',
     organizational_unit: '',
     supervisor_department: '',
     supervisor_position: '',
     supervisor_name: '',
-    work_days: ['月', '火', '水', '木', '金'],
-    work_start_time: '08:00',
-    work_end_time: '17:00',
-    break_time_minutes: 60,
-    hourly_rate: 1500,
-    overtime_rate: 1875,
-    haken_moto_complaint_contact: {
-      department: '人事部',
-      position: '課長',
-      name: '',
-      phone: '',
-    },
+    work_days: DEFAULT_WORK_CONDITIONS.work_days,
+    work_start_time: DEFAULT_WORK_CONDITIONS.work_start_time,
+    work_end_time: DEFAULT_WORK_CONDITIONS.work_end_time,
+    break_time_minutes: DEFAULT_WORK_CONDITIONS.break_time_minutes,
+    hourly_rate: DEFAULT_WORK_CONDITIONS.hourly_rate,
+    overtime_rate: DEFAULT_WORK_CONDITIONS.overtime_rate,
+    // 派遣元（UNS企画）の連絡先 - config/uns-defaults.ts で設定
+    haken_moto_complaint_contact: { ...HAKEN_MOTO_COMPLAINT_CONTACT },
     haken_saki_complaint_contact: {
       department: '',
       position: '',
       name: '',
       phone: '',
     },
-    haken_moto_manager: {
-      department: '派遣事業部',
-      position: '部長',
-      name: '',
-      phone: '',
-    },
+    // 派遣元責任者（UNS企画）- config/uns-defaults.ts で設定
+    haken_moto_manager: { ...HAKEN_MOTO_MANAGER },
     haken_saki_manager: {
       department: '',
       position: '',
@@ -63,6 +60,9 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
 
   const [factories, setFactories] = useState<FactoryListItem[]>([])
   const [loadingFactories, setLoadingFactories] = useState(false)
+  const [employees, setEmployees] = useState<EmployeeListItem[]>([])
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
+  const [employeeSearch, setEmployeeSearch] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -84,6 +84,49 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
     }
     loadFactories()
   }, [initialData])
+
+  // Load employees
+  useEffect(() => {
+    async function loadEmployees() {
+      setLoadingEmployees(true)
+      try {
+        const data = await employeeApi.getList({ limit: 1000 })
+        setEmployees(data)
+      } catch (err) {
+        console.error('Failed to load employees', err)
+      } finally {
+        setLoadingEmployees(false)
+      }
+    }
+    loadEmployees()
+  }, [])
+
+  // Filter employees based on search (by 社員№ or name)
+  const filteredEmployees = useMemo(() => {
+    if (!employeeSearch.trim()) return employees.slice(0, 50) // Show first 50 by default
+    const search = employeeSearch.toLowerCase()
+    return employees.filter(emp =>
+      emp.employee_number?.toLowerCase().includes(search) ||
+      emp.full_name_kanji?.toLowerCase().includes(search) ||
+      emp.full_name_kana?.toLowerCase().includes(search)
+    ).slice(0, 50)
+  }, [employees, employeeSearch])
+
+  // Handle employee selection
+  const handleEmployeeToggle = (employeeId: number) => {
+    setFormData(prev => {
+      const currentIds = prev.employee_ids || []
+      const newIds = currentIds.includes(employeeId)
+        ? currentIds.filter(id => id !== employeeId)
+        : [...currentIds, employeeId]
+      return { ...prev, employee_ids: newIds }
+    })
+  }
+
+  // Get selected employees info
+  const selectedEmployees = useMemo(() => {
+    return employees.filter(emp => formData.employee_ids?.includes(emp.id))
+  }, [employees, formData.employee_ids])
 
   const handleFactoryChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const factoryId = Number(e.target.value)
@@ -159,6 +202,9 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
     if (!formData.factory_id) {
         newErrors.factory_id = '工場を選択してください'
     }
+    if (!formData.employee_ids || formData.employee_ids.length === 0) {
+        newErrors.employee_ids = '派遣労働者を最低1名選択してください'
+    }
     if (!formData.worksite_name) {
       newErrors.worksite_name = '派遣先名を入力してください'
     }
@@ -225,6 +271,104 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
                 )}
             </div>
         </div>
+      </section>
+
+      {/* Section 0.5: Employee Selection */}
+      <section>
+        <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b">
+          派遣労働者選択 *
+        </h3>
+
+        {/* Selected employees display */}
+        {selectedEmployees.length > 0 && (
+          <div className="mb-4">
+            <label className="form-label text-sm text-gray-600 mb-2">選択済み ({selectedEmployees.length}名)</label>
+            <div className="flex flex-wrap gap-2">
+              {selectedEmployees.map(emp => (
+                <span
+                  key={emp.id}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm"
+                >
+                  <span className="font-mono font-medium">{emp.employee_number}</span>
+                  <span className="text-primary-600">|</span>
+                  <span>{emp.full_name_kanji || emp.full_name_kana}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleEmployeeToggle(emp.id)}
+                    className="ml-1 hover:text-red-600"
+                    title="削除"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Search input */}
+        <div className="mb-3">
+          <input
+            type="text"
+            value={employeeSearch}
+            onChange={(e) => setEmployeeSearch(e.target.value)}
+            placeholder="社員№ または氏名で検索..."
+            className="form-input"
+          />
+        </div>
+
+        {/* Employee list */}
+        <div className={`border rounded-lg max-h-60 overflow-y-auto ${errors.employee_ids ? 'border-red-500' : 'border-gray-200'}`}>
+          {loadingEmployees ? (
+            <div className="p-4 text-center text-gray-500">読み込み中...</div>
+          ) : filteredEmployees.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">該当する従業員がありません</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="p-2 text-left w-10"></th>
+                  <th className="p-2 text-left font-medium">社員№</th>
+                  <th className="p-2 text-left font-medium">氏名</th>
+                  <th className="p-2 text-left font-medium">国籍</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEmployees.map(emp => {
+                  const isSelected = formData.employee_ids?.includes(emp.id)
+                  return (
+                    <tr
+                      key={emp.id}
+                      onClick={() => handleEmployeeToggle(emp.id)}
+                      className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-primary-50' : ''}`}
+                    >
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="p-2 font-mono font-medium text-gray-900">{emp.employee_number}</td>
+                      <td className="p-2">
+                        <div>{emp.full_name_kanji || emp.full_name_kana}</div>
+                        {emp.full_name_kanji && emp.full_name_kana && <div className="text-xs text-gray-500">{emp.full_name_kana}</div>}
+                      </td>
+                      <td className="p-2 text-gray-600">{emp.nationality}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        {errors.employee_ids && (
+          <p className="form-error mt-1">{errors.employee_ids}</p>
+        )}
+        <p className="text-xs text-gray-500 mt-2">
+          {employees.length}名の従業員から選択 • 検索で絞り込み可能
+        </p>
       </section>
 
       {/* Section 1: Basic Info */}
@@ -554,6 +698,13 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
               />
               <input
                 type="text"
+                value={formData.haken_saki_complaint_contact?.position}
+                onChange={(e) => handleNestedChange('haken_saki_complaint_contact', 'position', e.target.value)}
+                className="form-input"
+                placeholder="役職"
+              />
+              <input
+                type="text"
                 value={formData.haken_saki_complaint_contact?.name}
                 onChange={(e) => handleNestedChange('haken_saki_complaint_contact', 'name', e.target.value)}
                 className="form-input"
@@ -608,6 +759,13 @@ export function KobetsuForm({ initialData, onSubmit, isLoading }: KobetsuFormPro
                 onChange={(e) => handleNestedChange('haken_saki_manager', 'department', e.target.value)}
                 className="form-input"
                 placeholder="部署"
+              />
+              <input
+                type="text"
+                value={formData.haken_saki_manager?.position}
+                onChange={(e) => handleNestedChange('haken_saki_manager', 'position', e.target.value)}
+                className="form-input"
+                placeholder="役職"
               />
               <input
                 type="text"

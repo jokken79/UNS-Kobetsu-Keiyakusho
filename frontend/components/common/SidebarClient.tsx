@@ -102,6 +102,12 @@ const navigation = [
     icon: Icons.Import,
     description: 'Excel/JSON取込',
   },
+  {
+    name: 'システム設定',
+    href: '/settings',
+    icon: Icons.Settings,
+    description: 'UNS企画デフォルト設定',
+  },
 ]
 
 export function SidebarClient() {

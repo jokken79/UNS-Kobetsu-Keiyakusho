@@ -687,6 +687,34 @@ export const syncApi = {
 
 import type { CompanySettings } from '@/types'
 
+// Types for form defaults
+export interface ContactInfoEditable {
+  department: string
+  position: string
+  name: string
+  phone: string
+}
+
+export interface ManagerInfoEditable extends ContactInfoEditable {
+  license_number?: string
+}
+
+export interface DefaultWorkConditions {
+  work_days: string[]
+  work_start_time: string
+  work_end_time: string
+  break_time_minutes: number
+  hourly_rate: number
+  overtime_rate: number
+  responsibility_level: string
+}
+
+export interface UNSFormDefaults {
+  complaint_contact: ContactInfoEditable
+  manager: ManagerInfoEditable
+  work_conditions: DefaultWorkConditions
+}
+
 export const settingsApi = {
   // Get company (派遣元) information
   getCompany: async (): Promise<CompanySettings> => {
@@ -697,6 +725,18 @@ export const settingsApi = {
   // Get system info
   getSystem: async (): Promise<{ app_name: string; version: string; environment: string }> => {
     const response = await apiClient.get('/settings/system')
+    return response.data
+  },
+
+  // Get form defaults (派遣元連絡先・責任者・就業条件)
+  getFormDefaults: async (): Promise<UNSFormDefaults> => {
+    const response = await apiClient.get<UNSFormDefaults>('/settings/form-defaults')
+    return response.data
+  },
+
+  // Update form defaults
+  updateFormDefaults: async (defaults: UNSFormDefaults): Promise<UNSFormDefaults> => {
+    const response = await apiClient.put<UNSFormDefaults>('/settings/form-defaults', defaults)
     return response.data
   },
 }
