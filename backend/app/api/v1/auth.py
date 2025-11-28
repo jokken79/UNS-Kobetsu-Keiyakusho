@@ -106,9 +106,9 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Inactive user account",
         )
 
-    # Create tokens
+    # Create tokens (sub must be a string per JWT spec)
     token_data = {
-        "sub": user.id,
+        "sub": str(user.id),
         "email": user.email,
         "role": user.role,
     }
@@ -134,9 +134,9 @@ async def refresh_token(request: RefreshRequest):
     # Verify refresh token
     token_data = verify_token(request.refresh_token, token_type="refresh")
 
-    # Create new tokens
+    # Create new tokens (sub must be a string per JWT spec)
     new_token_data = {
-        "sub": token_data.user_id,
+        "sub": str(token_data.user_id),
         "email": token_data.email,
         "role": token_data.role,
     }

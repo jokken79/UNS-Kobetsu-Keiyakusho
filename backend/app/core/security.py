@@ -5,18 +5,15 @@ Provides JWT token handling, password hashing, and user authentication.
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Union
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import get_db
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # HTTP Bearer token scheme
 security = HTTPBearer()
@@ -38,13 +35,34 @@ class Token(BaseModel):
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Verify a plain password against a hashed password.
+
+    Args:
+        plain_password: The plain text password to verify
+        hashed_password: The bcrypt hashed password to check against
+
+    Returns:
+        True if password matches, False otherwise
+    """
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'),
+        hashed_password.encode('utf-8') if isinstance(hashed_password, str) else hashed_password
+    )
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password for storage."""
-    return pwd_context.hash(password)
+    """
+    Hash a password for storage using bcrypt.
+
+    Args:
+        password: The plain text password to hash
+
+    Returns:
+        The bcrypt hashed password as a string
+    """
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return hashed.decode('utf-8')
 
 
 def create_access_token(
@@ -146,7 +164,9 @@ def verify_token(token: str, token_type: str = "access") -> TokenData:
         if payload.get("type") != token_type:
             raise credentials_exception
 
-        user_id: int = payload.get("sub")
+        # sub is stored as string per JWT spec, convert to int
+        sub = payload.get("sub")
+        user_id: int = int(sub) if sub else None
         email: str = payload.get("email")
         role: str = payload.get("role")
 

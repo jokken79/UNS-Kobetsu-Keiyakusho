@@ -224,3 +224,39 @@ class Employee(Base):
         if self.is_indefinite_employment:
             return "☑無期雇用  □有期雇用"
         return "□無期雇用  ☑有期雇用"
+
+    @property
+    def display_name(self) -> str:
+        """
+        Return appropriate name based on nationality.
+        日本人 → 漢字 (kanji)
+        外国人 → カタカナ (katakana)
+        """
+        japanese_nationalities = ["日本", "日本人", "Japanese", "japan"]
+        if self.nationality and self.nationality.lower() in [n.lower() for n in japanese_nationalities]:
+            return self.full_name_kanji
+        return self.full_name_kana or self.full_name_kanji
+
+    @property
+    def age_category(self) -> str:
+        """
+        Return age category for 派遣先通知書 document.
+
+        Based on Excel formula:
+        =IF(age<=18,"18未満(age)歳",
+          IF(AND(age>=18,age<=45),"18以上45歳未満",
+            IF(AND(age>=46,age<=60),"46以上60歳未満",
+              IF(age<=60,"60歳未満","60歳以上"))))
+        """
+        age = self.calculated_age
+        if age is None:
+            return ""
+
+        if age < 18:
+            return f"18未満({age})歳"
+        elif age >= 18 and age <= 45:
+            return "18以上45歳未満"
+        elif age >= 46 and age <= 60:
+            return "46以上60歳未満"
+        else:  # age > 60
+            return "60歳以上"

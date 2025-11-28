@@ -99,6 +99,28 @@ async def get_employee_stats(
         Employee.visa_expiry_date <= expiry_date
     ).scalar()
 
+    # Calculate ages for active employees
+    today = date.today()
+    active_employees_with_dob = db.query(Employee).filter(
+        Employee.status == "active",
+        Employee.date_of_birth.isnot(None)
+    ).all()
+
+    ages = []
+    under_18 = 0
+    over_60 = 0
+    for emp in active_employees_with_dob:
+        age = today.year - emp.date_of_birth.year - (
+            (today.month, today.day) < (emp.date_of_birth.month, emp.date_of_birth.day)
+        )
+        ages.append(age)
+        if age < 18:
+            under_18 += 1
+        elif age >= 60:
+            over_60 += 1
+
+    average_age = sum(ages) / len(ages) if ages else None
+
     # By company
     by_company = db.query(
         Employee.company_name,
@@ -121,6 +143,9 @@ async def get_employee_stats(
         active_employees=active or 0,
         resigned_employees=resigned or 0,
         visa_expiring_soon=visa_expiring or 0,
+        average_age=average_age,
+        under_18_count=under_18,
+        over_60_count=over_60,
         by_company=[{"company_name": r.company_name, "count": r.count} for r in by_company],
         by_nationality=[{"nationality": r.nationality or "未設定", "count": r.count} for r in by_nationality]
     )
@@ -168,8 +193,10 @@ async def get_employees_for_contract(
             employee_number=emp.employee_number,
             full_name_kanji=emp.full_name_kanji,
             full_name_kana=emp.full_name_kana,
+            display_name=emp.display_name,
             gender=emp.gender,
             age=emp.calculated_age,
+            age_category=emp.age_category,
             nationality=emp.nationality or "ベトナム",
             has_employment_insurance=emp.has_employment_insurance,
             has_health_insurance=emp.has_health_insurance,
@@ -199,8 +226,10 @@ async def get_employee(
 
     response = EmployeeResponse.model_validate(employee)
     response.age = employee.calculated_age
+    response.display_name = employee.display_name
     response.is_indefinite_employment = employee.is_indefinite_employment
     response.employment_type_display = employee.employment_type_display
+    response.age_category = employee.age_category
 
     return response
 

@@ -124,7 +124,7 @@ class KobetsuService:
         # Create employee associations
         for employee_id in data.employee_ids:
             employee_link = KobetsuEmployee(
-                kobetsu_id=contract.id,
+                kobetsu_keiyakusho_id=contract.id,
                 employee_id=employee_id,
             )
             self.db.add(employee_link)
@@ -412,7 +412,7 @@ class KobetsuService:
         # Create employee associations
         for emp_id in employee_ids:
             employee_link = KobetsuEmployee(
-                kobetsu_id=new_contract.id,
+                kobetsu_keiyakusho_id=new_contract.id,
                 employee_id=emp_id,
             )
             self.db.add(employee_link)
@@ -734,7 +734,7 @@ class KobetsuService:
         # Create employee associations
         for emp_id in employee_ids:
             employee_link = KobetsuEmployee(
-                kobetsu_id=new_contract.id,
+                kobetsu_keiyakusho_id=new_contract.id,
                 employee_id=emp_id,
             )
             self.db.add(employee_link)

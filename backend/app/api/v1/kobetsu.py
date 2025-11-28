@@ -25,14 +25,14 @@ from app.schemas.kobetsu_keiyakusho import (
     KobetsuKeiyakushoStats,
 )
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 # ========================================
 # LIST & SEARCH ENDPOINTS
 # ========================================
 
-@router.get("/", response_model=dict)
+@router.get("", response_model=dict)
 async def list_contracts(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum records to return"),

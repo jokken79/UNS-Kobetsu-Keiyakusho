@@ -65,15 +65,24 @@ class Settings(BaseSettings):
         return v
 
     # UNS Kikaku Company Information (派遣元)
-    COMPANY_NAME: str = "株式会社UNS企画"
-    COMPANY_ADDRESS: str = "東京都新宿区西新宿1-1-1"
-    COMPANY_TEL: str = "03-1234-5678"
-    COMPANY_FAX: str = "03-1234-5679"
-    COMPANY_LICENSE_NUMBER: str = "派13-123456"
+    COMPANY_NAME: str = "ユニバーサル企画株式会社"
+    COMPANY_NAME_LEGAL: str = "ユニバーサル企画 株式会社"
+    COMPANY_POSTAL_CODE: str = "461-0025"
+    COMPANY_ADDRESS: str = "愛知県名古屋市東区徳川2-18-18"
+    COMPANY_TEL: str = "052-938-8840"
+    COMPANY_MOBILE: str = "080-7376-1988"
+    COMPANY_FAX: str = ""
+    COMPANY_EMAIL: str = "infoapp@uns-kikaku.com"
+    COMPANY_WEBSITE: str = "www.uns-kikaku.com"
+
+    # 許可証番号
+    COMPANY_LICENSE_NUMBER: str = "派 23-303669"  # 労働者派遣事業
+    COMPANY_SUPPORT_ORG_NUMBER: str = "21登-006367"  # 登録支援機関
+    COMPANY_JOB_PLACEMENT_NUMBER: str = "23-ユ-302989"  # 有料職業紹介事業
 
     # 派遣元責任者 (Dispatch Company Manager)
-    DISPATCH_MANAGER_NAME: str = "山田太郎"
-    DISPATCH_MANAGER_POSITION: str = "派遣事業部長"
+    DISPATCH_MANAGER_NAME: str = "中山 雅和"
+    DISPATCH_MANAGER_POSITION: str = "代表取締役"
 
     # File Storage
     UPLOAD_DIR: str = "./uploads"

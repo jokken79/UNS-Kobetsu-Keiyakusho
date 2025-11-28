@@ -121,7 +121,7 @@ export interface KobetsuResponse {
   created_at: string
   updated_at: string
   created_by?: number
-  employees?: EmployeeBasic[]
+  employees?: KobetsuEmployeeInfo[]
 }
 
 // Kobetsu List Item
@@ -146,12 +146,25 @@ export interface KobetsuStats {
   total_workers: number
 }
 
-// Employee Basic
-export interface EmployeeBasic {
+// Employee Basic Info (nested in KobetsuEmployeeInfo)
+export interface EmployeeBasicInfo {
   id: number
-  employee_id: string
-  full_name_roman: string
-  nationality?: string
+  employee_number: string  // 社員№
+  full_name_kanji?: string  // 漢字氏名
+  full_name_kana?: string  // カナ氏名
+  full_name_romaji?: string  // ローマ字氏名
+  nationality?: string  // 国籍
+}
+
+// Kobetsu Employee Info (join table info with nested employee)
+export interface KobetsuEmployeeInfo {
+  id: number  // KobetsuEmployee.id
+  employee_id: number  // FK to employees
+  hourly_rate?: number  // 個別時給
+  individual_start_date?: string  // 途中入社日
+  individual_end_date?: string  // 途中退社日
+  is_indefinite_employment: boolean  // 無期雇用
+  employee?: EmployeeBasicInfo  // Nested employee info
 }
 
 // Paginated Response
@@ -650,6 +663,8 @@ export interface EmployeeResponse {
   bank_account_holder?: string
   notes?: string
   age?: number
+  display_name?: string  // 日本人→漢字, 外国人→カタカナ
+  age_category?: string  // 年齢区分 for 派遣先通知書
   is_indefinite_employment: boolean
   employment_type_display: string
   created_at: string
@@ -666,10 +681,12 @@ export interface EmployeeListItem {
   department?: string
   line_name?: string
   hire_date: string
-  hourly_rate?: number
+  hourly_rate?: number  // 時給 (lo que pagamos al empleado)
+  billing_rate?: number  // 単価 (lo que la fábrica nos paga)
   status: string
   nationality: string
   visa_expiry_date?: string
+  age?: number
 }
 
 export interface EmployeeForContract {
@@ -677,8 +694,10 @@ export interface EmployeeForContract {
   employee_number: string
   full_name_kanji: string
   full_name_kana: string
+  display_name: string  // 日本人→漢字, 外国人→カタカナ
   gender?: string
   age?: number
+  age_category: string  // 年齢区分 for 派遣先通知書
   nationality: string
   has_employment_insurance: boolean
   has_health_insurance: boolean
@@ -691,6 +710,9 @@ export interface EmployeeStats {
   active_employees: number
   resigned_employees: number
   visa_expiring_soon: number
+  average_age?: number
+  under_18_count: number
+  over_60_count: number
   by_company: { company_name: string; count: number }[]
   by_nationality: { nationality: string; count: number }[]
 }
@@ -704,4 +726,38 @@ export interface EmployeeListParams {
   factory_id?: number
   nationality?: string
   visa_expiring_days?: number
+}
+
+// ========================================
+// COMPANY SETTINGS TYPES (派遣元)
+// ========================================
+
+export interface CompanyInfo {
+  name: string
+  name_legal: string
+  postal_code: string
+  address: string
+  full_address: string
+  tel: string
+  mobile: string
+  fax?: string
+  email: string
+  website: string
+}
+
+export interface LicenseInfo {
+  dispatch_license: string  // 労働者派遣事業
+  support_org: string  // 登録支援機関
+  job_placement: string  // 有料職業紹介事業
+}
+
+export interface ManagerInfo {
+  name: string
+  position: string
+}
+
+export interface CompanySettings {
+  company: CompanyInfo
+  licenses: LicenseInfo
+  manager: ManagerInfo
 }

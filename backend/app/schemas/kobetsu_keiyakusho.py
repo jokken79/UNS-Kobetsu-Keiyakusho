@@ -200,13 +200,31 @@ class KobetsuKeiyakushoUpdate(BaseModel):
 # RESPONSE SCHEMAS
 # ========================================
 
-class EmployeeBasic(BaseModel):
-    """従業員基本情報"""
+class EmployeeBasicInfo(BaseModel):
+    """従業員基本情報 (from Employee model)"""
     id: int
-    employee_id: str
-    full_name_roman: str
-    nationality: Optional[str]
-    
+    employee_number: str  # 社員№
+    full_name_kanji: Optional[str] = None  # 漢字氏名
+    full_name_kana: Optional[str] = None  # カナ氏名
+    full_name_romaji: Optional[str] = None  # ローマ字氏名
+    nationality: Optional[str] = None  # 国籍
+
+    class Config:
+        from_attributes = True
+
+
+class KobetsuEmployeeInfo(BaseModel):
+    """契約に紐づく従業員情報 (from KobetsuEmployee join table)"""
+    id: int  # KobetsuEmployee.id
+    employee_id: int  # FK to employees
+    hourly_rate: Optional[Decimal] = None  # 個別時給
+    individual_start_date: Optional[date] = None  # 途中入社日
+    individual_end_date: Optional[date] = None  # 途中退社日
+    is_indefinite_employment: bool = False  # 無期雇用
+
+    # Nested employee info
+    employee: Optional[EmployeeBasicInfo] = None
+
     class Config:
         from_attributes = True
 
@@ -291,8 +309,8 @@ class KobetsuKeiyakushoResponse(BaseModel):
     created_by: Optional[int]
     
     # Relaciones (opcional)
-    employees: Optional[List[EmployeeBasic]] = None
-    
+    employees: Optional[List[KobetsuEmployeeInfo]] = None
+
     class Config:
         from_attributes = True
 

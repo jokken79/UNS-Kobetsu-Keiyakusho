@@ -15,9 +15,9 @@ export default function EmployeesPage() {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ['employees', search, statusFilter],
     queryFn: () => employeeApi.getList({
-      search,
+      search: search || undefined,
       status: statusFilter === 'all' ? undefined : statusFilter,
-      limit: 1000
+      limit: 500
     })
   })
 
@@ -113,6 +113,9 @@ export default function EmployeesPage() {
                 <p className="text-3xl font-bold text-purple-600 mt-1">
                   {stats.average_age ? Math.round(stats.average_age) : 0}歳
                 </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  18歳未満: {stats.under_18_count || 0} / 60歳以上: {stats.over_60_count || 0}
+                </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -193,6 +196,9 @@ export default function EmployeesPage() {
                     時給
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    単価
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     派遣先
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -222,6 +228,9 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       ¥{employee.hourly_rate ? employee.hourly_rate.toLocaleString() : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ¥{employee.billing_rate ? employee.billing_rate.toLocaleString() : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {employee.company_name || '-'}

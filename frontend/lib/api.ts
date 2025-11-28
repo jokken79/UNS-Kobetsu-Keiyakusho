@@ -32,7 +32,9 @@ import type {
   EmployeeListParams,
 } from '@/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8010/api/v1'
+// Use relative path for API calls - Next.js rewrites proxy them to the backend
+// This works regardless of how the user accesses the frontend (localhost, IP, domain)
+const API_URL = '/api/v1'
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'access_token'
@@ -675,6 +677,26 @@ export const syncApi = {
   // Sync all data
   syncAll: async (): Promise<SyncResult> => {
     const response = await apiClient.post<SyncResult>('/sync/all')
+    return response.data
+  },
+}
+
+// ========================================
+// SETTINGS API (設定)
+// ========================================
+
+import type { CompanySettings } from '@/types'
+
+export const settingsApi = {
+  // Get company (派遣元) information
+  getCompany: async (): Promise<CompanySettings> => {
+    const response = await apiClient.get<CompanySettings>('/settings/company')
+    return response.data
+  },
+
+  // Get system info
+  getSystem: async (): Promise<{ app_name: string; version: string; environment: string }> => {
+    const response = await apiClient.get('/settings/system')
     return response.data
   },
 }

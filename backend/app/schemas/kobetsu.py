@@ -17,7 +17,8 @@ from .kobetsu_keiyakusho import (
     KobetsuKeiyakushoStats as KobetsuStats,
     ContactInfo,
     ManagerInfo,
-    EmployeeBasic,
+    EmployeeBasicInfo,
+    KobetsuEmployeeInfo,
 )
 
 
@@ -99,5 +100,6 @@ __all__ = [
     "MessageResponse",
     "ContactInfo",
     "ManagerInfo",
-    "EmployeeBasic",
+    "EmployeeBasicInfo",
+    "KobetsuEmployeeInfo",
 ]

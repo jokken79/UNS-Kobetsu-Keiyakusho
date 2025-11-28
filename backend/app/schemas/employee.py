@@ -177,8 +177,10 @@ class EmployeeResponse(EmployeeBase):
 
     # Calculated
     age: Optional[int] = None
+    display_name: str = ""  # 日本人→漢字, 外国人→カタカナ
     is_indefinite_employment: bool = False
     employment_type_display: str = "□無期雇用  ☑有期雇用"
+    age_category: str = ""  # 年齢区分 for 派遣先通知書
 
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -198,10 +200,12 @@ class EmployeeListItem(BaseModel):
     department: Optional[str] = None
     line_name: Optional[str] = None
     hire_date: date
-    hourly_rate: Optional[Decimal] = None
+    hourly_rate: Optional[Decimal] = None  # 時給 (lo que pagamos al empleado)
+    billing_rate: Optional[Decimal] = None  # 単価 (lo que la fábrica nos paga)
     status: str
     nationality: str = "ベトナム"
     visa_expiry_date: Optional[date] = None
+    age: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -213,6 +217,9 @@ class EmployeeStats(BaseModel):
     active_employees: int
     resigned_employees: int
     visa_expiring_soon: int  # 30 days
+    average_age: Optional[float] = None
+    under_18_count: int = 0
+    over_60_count: int = 0
     by_company: List[dict] = []
     by_nationality: List[dict] = []
 
@@ -261,8 +268,10 @@ class EmployeeForContract(BaseModel):
     employee_number: str
     full_name_kanji: str
     full_name_kana: str
+    display_name: str = ""  # 日本人→漢字, 外国人→カタカナ
     gender: Optional[str] = None
     age: Optional[int] = None
+    age_category: str = ""  # 年齢区分 for 派遣先通知書
     nationality: str = "ベトナム"
     has_employment_insurance: bool = True
     has_health_insurance: bool = True

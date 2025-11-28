@@ -14,8 +14,8 @@ export default function FactoriesPage() {
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', search],
     queryFn: () => factoryApi.getList({
-      search,
-      limit: 1000
+      search: search || undefined,
+      limit: 500
     })
   })
 

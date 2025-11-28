@@ -3,6 +3,9 @@ const nextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 
+  // Don't redirect trailing slashes - needed for API proxy
+  skipTrailingSlashRedirect: true,
+
   // Enable experimental features
   experimental: {
     // Enable server actions
@@ -30,6 +33,18 @@ const nextConfig = {
         source: '/contracts',
         destination: '/kobetsu',
         permanent: true,
+      },
+    ]
+  },
+
+  // API Rewrites - Proxy API calls through Next.js server
+  // This allows the frontend to work regardless of network context
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://uns-kobetsu-backend:8000'
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${backendUrl}/api/v1/:path*`,
       },
     ]
   },
